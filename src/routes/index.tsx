@@ -50,6 +50,7 @@ const sampleLooks: Look[] = [
   { src: sampleCoral, name: "Look 01", note: "Warm accent · relaxed proportions", uploaded: false },
   { src: sampleBlack, name: "Look 02", note: "Monochrome · sharper finish", uploaded: false },
 ];
+const fallbackLook: Look = { src: sampleCoral, name: "Look 01", note: "Warm accent · relaxed proportions", uploaded: false };
 
 function ShopLook() {
   const [view, setView] = useState<View>("start");
@@ -100,7 +101,7 @@ function ShopLook() {
     setZoom([1]);
   };
 
-  const activeLook = looks[selected] ?? looks[0] ?? sampleLooks[0];
+  const activeLook = looks[selected] ?? looks[0] ?? fallbackLook;
 
   return (
     <main className="min-h-dvh bg-background text-foreground">
@@ -155,7 +156,7 @@ function StartView({ looks, onChange, onCompare, onSamples }: { looks: Look[]; o
       <p className="mt-5 max-w-sm text-[15px] leading-6 text-muted-foreground">Add two complete outfit photos. Compare the overall effect, the details, and which look feels most like you.</p>
       <div className="mt-9 grid grid-cols-2 gap-3">
         {[0, 1].map((slot) => (
-          <LookUpload key={slot} slot={slot} look={looks[slot]} onChange={(event) => onChange(slot, event)} />
+          <LookUpload key={slot} slot={slot} {...(looks[slot] ? { look: looks[slot] } : {})} onChange={(event) => onChange(slot, event)} />
         ))}
       </div>
       <Button className="mt-6 h-13 w-full rounded-lg text-base" disabled={!ready} onClick={onCompare}><Expand /> Compare these looks</Button>

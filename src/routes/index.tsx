@@ -26,7 +26,7 @@ import sampleBlack from "@/assets/shoplook-black.jpg";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { analyseShopLook } from "@/lib/style-advice.functions";
-import type { StyleAdvice } from "@/lib/style-advice.server";
+import type { StyleAdvice } from "@/lib/style-advice.types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({

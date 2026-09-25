@@ -3,6 +3,7 @@ import { NoObjectGeneratedError, Output, streamText, type UserContent } from "ai
 import { z } from "zod";
 
 import { createLovableAiGatewayRunIdFetch } from "./ai-run-id.server.ts";
+import type { StyleAdvice } from "./style-advice.types.ts";
 
 const adviceSchema = z.object({
   headline: z.string(),
@@ -21,8 +22,6 @@ const adviceSchema = z.object({
     }),
   ),
 });
-
-export type StyleAdvice = z.infer<typeof adviceSchema>;
 
 type AnalysisInput = {
   shopperImage: string;
@@ -98,7 +97,7 @@ export async function createStyleAdvice(input: AnalysisInput) {
       },
     });
 
-    const output = await result.output;
+    const output: StyleAdvice | undefined = await result.output;
     if (!output) return { ok: false as const, error: "ShopLook could not read this outfit clearly. Try a brighter, full-outfit photo." };
 
     return {

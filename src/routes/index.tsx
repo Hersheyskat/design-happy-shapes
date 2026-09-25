@@ -7,34 +7,40 @@ import {
   Expand,
   ImagePlus,
   LoaderCircle,
+  Link as LinkIcon,
+  Palette,
   Plus,
   RotateCcw,
   Share2,
+  Sparkles,
   Upload,
   X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 
 import sampleCoral from "@/assets/shoplook-coral.jpg";
 import sampleBlack from "@/assets/shoplook-black.jpg";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { analyseShopLook } from "@/lib/style-advice.functions";
+import type { StyleAdvice } from "@/lib/style-advice.server";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ShopLook — Compare looks clearly" },
+      { title: "ShopLook — AI styling for better look comparisons" },
       {
         name: "description",
-        content: "Put complete looks side by side, compare the details, and choose your favourite.",
+        content: "Upload your outfit and a product screenshot or link for complementary colors and practical styling suggestions.",
       },
-      { property: "og:title", content: "ShopLook — Compare looks clearly" },
+      { property: "og:title", content: "ShopLook — AI styling for better look comparisons" },
       {
         property: "og:description",
-        content: "Put complete looks side by side, compare the details, and choose your favourite.",
+        content: "Upload your outfit and a product screenshot or link for complementary colors and practical styling suggestions.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -43,8 +49,14 @@ export const Route = createFileRoute("/")({
   component: ShopLook,
 });
 
-type View = "start" | "processing" | "compare" | "detail";
+type View = "start" | "processing" | "advice" | "compare" | "detail";
 type Look = { src: string; name: string; note: string; uploaded: boolean };
+type UploadKind = "shopper" | "product";
+
+type UploadPhoto = {
+  file: File;
+  preview: string;
+};
 
 const sampleLooks: Look[] = [
   { src: sampleCoral, name: "Look 01", note: "Warm accent · relaxed proportions", uploaded: false },
@@ -55,10 +67,16 @@ const fallbackLook: Look = { src: sampleCoral, name: "Look 01", note: "Warm acce
 function ShopLook() {
   const [view, setView] = useState<View>("start");
   const [looks, setLooks] = useState<Look[]>([]);
+  const [shopperPhoto, setShopperPhoto] = useState<UploadPhoto | null>(null);
+  const [productPhoto, setProductPhoto] = useState<UploadPhoto | null>(null);
+  const [productUrl, setProductUrl] = useState("");
+  const [advice, setAdvice] = useState<StyleAdvice | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [selected, setSelected] = useState(0);
   const [zoom, setZoom] = useState([1]);
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const analyse = useServerFn(analyseShopLook);
 
   useEffect(() => {
     return () => {
@@ -67,6 +85,65 @@ function ShopLook() {
       });
     };
   }, [looks]);
+
+  useEffect(() => {
+    return () => {
+      if (shopperPhoto?.preview.startsWith("blob:")) URL.revokeObjectURL(shopperPhoto.preview);
+      if (productPhoto?.preview.startsWith("blob:")) URL.revokeObjectURL(productPhoto.preview);
+    };
+  }, [shopperPhoto, productPhoto]);
+
+  const setUpload = (kind: UploadKind, event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAnalysisError(null);
+    if (!(["image/jpeg", "image/png", "image/webp"] as string[]).includes(file.type)) {
+      setAnalysisError("Choose a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size > 12_000_000) {
+      setAnalysisError("Choose an image smaller than 12 MB.");
+      return;
+    }
+    const update = kind === "shopper" ? setShopperPhoto : setProductPhoto;
+    update((current) => {
+      if (current?.preview.startsWith("blob:")) URL.revokeObjectURL(current.preview);
+      return { file, preview: URL.createObjectURL(file) };
+    });
+  };
+
+  const runAnalysis = async () => {
+    if (!shopperPhoto || (!productPhoto && !productUrl.trim())) return;
+    setView("processing");
+    setAnalysisError(null);
+    try {
+      const shopperImage = await imageToDataUrl(shopperPhoto.file);
+      const productImage = productPhoto ? await imageToDataUrl(productPhoto.file) : null;
+      const result = await analyse({
+        data: {
+          shopperImage,
+          shopperMime: "image/jpeg",
+          productImage,
+          productMime: productImage ? "image/jpeg" : null,
+          productUrl: productUrl.trim() || null,
+        },
+      });
+      if (!result.ok) {
+        setAnalysisError(result.error);
+        setView("start");
+        return;
+      }
+      setAdvice(result.advice);
+      setLooks([
+        { src: shopperPhoto.preview, name: "Your look", note: "Current outfit", uploaded: false },
+        ...(productPhoto ? [{ src: productPhoto.preview, name: "Product", note: "Product reference", uploaded: false }] : []),
+      ]);
+      setView("advice");
+    } catch {
+      setAnalysisError("ShopLook could not prepare these images. Please try different photos.");
+      setView("start");
+    }
+  };
 
   const replaceLook = (slot: number, event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -97,6 +174,11 @@ function ShopLook() {
   const reset = () => {
     setView("start");
     setLooks([]);
+    setShopperPhoto(null);
+    setProductPhoto(null);
+    setProductUrl("");
+    setAdvice(null);
+    setAnalysisError(null);
     setSelected(0);
     setZoom([1]);
   };
@@ -107,15 +189,33 @@ function ShopLook() {
     <main className="min-h-dvh bg-background text-foreground">
       <div className="mx-auto min-h-dvh w-full max-w-[430px] border-x border-border/70 bg-background shadow-page">
         <AppHeader
-          showBack={view === "detail"}
-          onBack={() => setView("compare")}
+          showBack={view === "detail" || view === "advice"}
+          onBack={() => setView(view === "detail" ? "compare" : "start")}
           onReset={reset}
           showReset={view !== "start" && view !== "processing"}
         />
         {view === "start" && (
-          <StartView looks={looks} onChange={replaceLook} onCompare={compare} onSamples={() => { setLooks(sampleLooks); setView("compare"); }} />
+          <StartView
+            shopperPhoto={shopperPhoto}
+            productPhoto={productPhoto}
+            productUrl={productUrl}
+            error={analysisError}
+            onUpload={setUpload}
+            onUrlChange={setProductUrl}
+            onAnalyse={runAnalysis}
+            onSamples={() => { setLooks(sampleLooks); setView("compare"); }}
+          />
         )}
-        {view === "processing" && <ProcessingView looks={looks} />}
+        {view === "processing" && <ProcessingView shopperPhoto={shopperPhoto} productPhoto={productPhoto} />}
+        {view === "advice" && advice && shopperPhoto && (
+          <AdviceView
+            shopperPhoto={shopperPhoto}
+            productPhoto={productPhoto}
+            productUrl={productUrl}
+            advice={advice}
+            onCompare={() => setView("compare")}
+          />
+        )}
         {view === "compare" && (
           <CompareView
             looks={looks}
@@ -137,6 +237,20 @@ function ShopLook() {
   );
 }
 
+async function imageToDataUrl(file: File) {
+  const image = await createImageBitmap(file);
+  const maxSide = 1200;
+  const ratio = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * ratio));
+  canvas.height = Math.max(1, Math.round(image.height * ratio));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Canvas is unavailable");
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  image.close();
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
+
 function AppHeader({ showBack, showReset, onBack, onReset }: { showBack: boolean; showReset: boolean; onBack: () => void; onReset: () => void }) {
   return (
     <header className="grid h-16 grid-cols-[44px_minmax(0,1fr)_44px] items-center border-b border-border px-3">
@@ -147,26 +261,50 @@ function AppHeader({ showBack, showReset, onBack, onReset }: { showBack: boolean
   );
 }
 
-function StartView({ looks, onChange, onCompare, onSamples }: { looks: Look[]; onChange: (slot: number, event: ChangeEvent<HTMLInputElement>) => void; onCompare: () => void; onSamples: () => void }) {
-  const ready = Boolean(looks[0] && looks[1]);
+function StartView({ shopperPhoto, productPhoto, productUrl, error, onUpload, onUrlChange, onAnalyse, onSamples }: { shopperPhoto: UploadPhoto | null; productPhoto: UploadPhoto | null; productUrl: string; error: string | null; onUpload: (kind: UploadKind, event: ChangeEvent<HTMLInputElement>) => void; onUrlChange: (value: string) => void; onAnalyse: () => void; onSamples: () => void }) {
+  const ready = Boolean(shopperPhoto && (productPhoto || productUrl.trim()));
   return (
-    <section className="px-5 pb-12 pt-10">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">A clearer way to choose</p>
-      <h1 className="max-w-sm font-display text-[3.45rem] leading-[0.92] font-medium">Put your looks<br />side by side.</h1>
-      <p className="mt-5 max-w-sm text-[15px] leading-6 text-muted-foreground">Add two complete outfit photos. Compare the overall effect, the details, and which look feels most like you.</p>
-      <div className="mt-9 grid grid-cols-2 gap-3">
-        {[0, 1].map((slot) => (
-          <LookUpload key={slot} slot={slot} {...(looks[slot] ? { look: looks[slot] } : {})} onChange={(event) => onChange(slot, event)} />
-        ))}
+    <section className="px-5 pb-12 pt-8">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">Your next look, considered</p>
+      <h1 className="max-w-sm font-display text-[3.35rem] leading-[0.94] font-medium">Add two things.<br />See the magic.</h1>
+      <p className="mt-5 max-w-sm text-[15px] leading-6 text-muted-foreground">Show us what you’re wearing and the piece you’re considering. ShopLook finds the colors and small adjustments that bring them together.</p>
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <PhotoInput title="Your photo" detail="A clear, full outfit" photo={shopperPhoto} icon={<ImagePlus />} onChange={(event) => onUpload("shopper", event)} />
+        <PhotoInput title="Product" detail="Screenshot or photo" photo={productPhoto} icon={<Upload />} onChange={(event) => onUpload("product", event)} />
       </div>
-      <Button className="mt-6 h-13 w-full rounded-lg text-base" disabled={!ready} onClick={onCompare}><Expand /> Compare these looks</Button>
-      {!ready && <p className="mt-3 text-center text-xs text-muted-foreground">Add two looks to start comparing</p>}
-      <Button variant="ghost" className="mt-2 h-11 w-full text-xs text-muted-foreground" onClick={onSamples}>View a sample comparison</Button>
+      <div className="my-4 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"><span className="h-px flex-1 bg-border" />or use a product link<span className="h-px flex-1 bg-border" /></div>
+      <label className="flex h-12 items-center gap-3 rounded-lg border border-input bg-background px-3 focus-within:ring-1 focus-within:ring-ring">
+        <LinkIcon className="size-4 shrink-0 text-muted-foreground" />
+        <span className="sr-only">Product link</span>
+        <input type="url" inputMode="url" value={productUrl} onChange={(event) => onUrlChange(event.target.value)} placeholder="Paste a product link" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+      </label>
+      {error && <div role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm leading-5 text-destructive">{error}</div>}
+      <Button className="mt-5 h-13 w-full rounded-lg text-base" disabled={!ready} onClick={onAnalyse}><Sparkles /> See the magic</Button>
+      {!ready && <p className="mt-3 text-center text-xs text-muted-foreground">Add your photo and a product screenshot or link</p>}
+      <Button variant="ghost" className="mt-2 h-11 w-full text-xs text-muted-foreground" onClick={onSamples}>Or explore a sample comparison</Button>
       <div className="mt-7 flex items-start gap-3 border-t border-border pt-5 text-xs leading-5 text-muted-foreground">
         <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-surface"><Check className="size-3" /></span>
-        <p>Your photos stay on this device. ShopLook compares the images you choose; it does not alter how you look.</p>
+        <p>Your images are sent securely only when you ask for suggestions. ShopLook gives styling advice; it never alters how you look.</p>
       </div>
     </section>
+  );
+}
+
+function PhotoInput({ title, detail, photo, icon, onChange }: { title: string; detail: string; photo: UploadPhoto | null; icon: ReactNode; onChange: (event: ChangeEvent<HTMLInputElement>) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className={cn("overflow-hidden rounded-lg border", photo ? "border-primary/50 bg-primary-soft" : "border-border bg-surface")}>
+      <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()} className="relative aspect-[3/4] h-auto w-full rounded-none p-0" aria-label={`Choose ${title.toLowerCase()}`}>
+        {photo ? <img src={photo.preview} alt={`${title} preview`} className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-muted-foreground">{icon}</span>}
+        {photo && <span className="absolute right-2 top-2 rounded-full bg-overlay px-2 py-1 text-[10px] font-semibold text-overlay-foreground">Ready</span>}
+      </Button>
+      <div className="p-3">
+        <p className="font-display text-lg">{title}</p>
+        <p className="mt-0.5 min-h-8 text-[11px] leading-4 text-muted-foreground">{photo ? photo.file.name : detail}</p>
+        <Button variant="link" className="mt-1 h-7 p-0 text-xs" onClick={() => inputRef.current?.click()}>{photo ? "Replace" : "Add photo"} <Upload /></Button>
+      </div>
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={onChange} aria-label={`Choose ${title.toLowerCase()}`} />
+    </div>
   );
 }
 
@@ -188,17 +326,51 @@ function LookUpload({ slot, look, onChange }: { slot: number; look?: Look; onCha
   );
 }
 
-function ProcessingView({ looks }: { looks: Look[] }) {
+function ProcessingView({ shopperPhoto, productPhoto }: { shopperPhoto: UploadPhoto | null; productPhoto: UploadPhoto | null }) {
   return (
     <section className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center px-8 text-center">
       <div className="relative mb-8 flex -space-x-5">
-        {looks.slice(0, 2).map((look, index) => <img key={look.src} src={look.src} alt={`Look ${index + 1}`} className="size-24 rounded-full border-4 border-background object-cover" />)}
+        {[shopperPhoto, productPhoto].filter((photo): photo is UploadPhoto => Boolean(photo)).map((photo, index) => <img key={photo.preview} src={photo.preview} alt={index === 0 ? "Your outfit" : "Product reference"} className="size-24 rounded-full border-4 border-background object-cover" />)}
         <span className="absolute -inset-2 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
       </div>
-      <p className="text-xs font-semibold uppercase tracking-widest text-primary">Looking at both</p>
-      <h1 className="mt-3 font-display text-4xl font-medium">Comparing your looks</h1>
-      <p className="mt-4 max-w-xs text-sm leading-6 text-muted-foreground">Reading colour, shape, balance, and the overall impression.</p>
-      <div className="mt-8 flex items-center gap-2 text-xs text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Preparing your comparison</div>
+      <p className="text-xs font-semibold uppercase tracking-widest text-primary">Finding the connection</p>
+      <h1 className="mt-3 font-display text-4xl font-medium">Styling your look</h1>
+      <p className="mt-4 max-w-xs text-sm leading-6 text-muted-foreground">Reading color, proportion, texture, and how the new piece can work with your outfit.</p>
+      <div className="mt-8 flex items-center gap-2 text-xs text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Preparing your suggestions</div>
+    </section>
+  );
+}
+
+function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, onCompare }: { shopperPhoto: UploadPhoto; productPhoto: UploadPhoto | null; productUrl: string; advice: StyleAdvice; onCompare: () => void }) {
+  return (
+    <section className="pb-10">
+      <div className="grid h-[23rem] grid-cols-[1fr_0.72fr] gap-1 bg-surface p-1">
+        <img src={shopperPhoto.preview} alt="Your uploaded outfit" className="h-full w-full rounded-md object-cover" />
+        <div className="grid min-h-0 gap-1">
+          {productPhoto ? <img src={productPhoto.preview} alt="Product reference" className="h-full min-h-0 w-full rounded-md object-cover" /> : <div className="grid h-full place-items-center rounded-md bg-primary-soft p-4 text-center"><LinkIcon className="mb-3 size-5 text-primary" /><p className="break-words text-xs leading-5 text-muted-foreground">{productUrl}</p></div>}
+        </div>
+      </div>
+      <div className="px-5 pt-7">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style edit</p>
+        <h1 className="mt-2 font-display text-4xl font-medium leading-none">{advice.headline}</h1>
+        <p className="mt-4 text-sm leading-6 text-muted-foreground">{advice.summary}</p>
+
+        <div className="mt-7 border-t border-border pt-6">
+          <div className="flex items-center gap-2"><Palette className="size-4 text-primary" /><h2 className="font-display text-2xl">Colors to bring in</h2></div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {advice.colors.map((color) => <div key={`${color.name}-${color.hex}`} className="rounded-lg border border-border bg-surface p-3"><span className="block h-10 rounded-md border border-border" style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(color.hex) ? color.hex : "var(--muted)" }} /><p className="mt-2 text-sm font-semibold">{color.name}</p><p className="mt-1 text-[11px] leading-4 text-muted-foreground">{color.use}</p></div>)}
+          </div>
+        </div>
+
+        <div className="mt-7 border-t border-border pt-6">
+          <div className="flex items-center gap-2"><Sparkles className="size-4 text-primary" /><h2 className="font-display text-2xl">Small changes, stronger look</h2></div>
+          <ol className="mt-3 divide-y divide-border">
+            {advice.adjustments.map((item, index) => <li key={`${item.title}-${index}`} className="grid grid-cols-[28px_1fr] gap-3 py-4"><span className="grid size-7 place-items-center rounded-full bg-primary-soft text-xs font-bold text-primary">{index + 1}</span><div><p className="text-sm font-semibold">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div></li>)}
+          </ol>
+        </div>
+        <Button className="mt-6 h-12 w-full rounded-lg" onClick={onCompare}><Expand /> Compare this look</Button>
+        <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">AI suggestions are a starting point—your taste is the final word.</p>
+      </div>
     </section>
   );
 }

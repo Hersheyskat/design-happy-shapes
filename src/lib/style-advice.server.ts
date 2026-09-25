@@ -1,5 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { NoObjectGeneratedError, Output, streamText, type ModelMessage } from "ai";
+import { NoObjectGeneratedError, Output, streamText, type UserContent } from "ai";
 import { z } from "zod";
 
 import { createLovableAiGatewayRunIdFetch } from "./ai-run-id.server.ts";
@@ -63,7 +63,7 @@ export async function createStyleAdvice(input: AnalysisInput) {
     fetch: runIdFetch.fetch,
   });
 
-  const content: ModelMessage extends never ? never : Array<Record<string, unknown>> = [
+  const content: UserContent = [
     {
       type: "text",
       text: [
@@ -84,7 +84,7 @@ export async function createStyleAdvice(input: AnalysisInput) {
   try {
     const result = streamText({
       model: provider.responses("openai/gpt-6-astra"),
-      messages: [{ role: "user", content: content as ModelMessage["content"] }],
+      messages: [{ role: "user", content }],
       maxRetries: 0,
       output: Output.object({ schema: adviceSchema, name: "shoplook_style_advice" }),
       providerOptions: {

@@ -1,9 +1,11 @@
 # Saved looks and the ShopLook community
 
 ## Goal
-Let shoppers save completed ShopLook results, revisit their progress, and participate in an in-app community where people publish looks, follow creators, like and discuss posts, and reuse products in their own look.
+Let shoppers choose a style mood, build and shop a look, save completed results, revisit their progress, and participate in an in-app community where people publish looks, follow creators, like and discuss posts, and reuse products in their own look.
 
 ## Experience
+- Place a required **Style mood** picker before the uploads, with the launch set: Minimal, Street, Classic, Romantic, and Sporty. The selected mood visibly carries through processing and results.
+- Use the chosen mood as an explicit input to the AI styling request so colors, adjustments, and suggested supporting items build toward that vibe.
 - Add a clear **Save look** action to the AI suggestions result. Nothing is saved automatically.
 - If the shopper is signed out, the save action opens sign-in and continues saving after sign-in.
 - Add a **Saved looks** entry in the ShopLook header.
@@ -15,6 +17,8 @@ Let shoppers save completed ShopLook results, revisit their progress, and partic
 - Let members follow and unfollow people, like and unlike looks, and add or delete their own comments.
 - Keep every saved look private by default. Its owner must explicitly publish it before it appears in profiles or feeds, and can return it to private later.
 - Add **Try this product** to public looks. It starts the existing creation flow with that product image or link already selected, then asks the shopper for their own photo and produces fresh private AI suggestions.
+- Add a small shopping edit to each result: the submitted product keeps its original direct link when supplied, while every AI-suggested supporting item opens an India-prioritized retailer search in a new tab. Label search destinations clearly and do not present unverified prices or availability.
+- Carry those shopping actions into comparison details and published community looks, so each item has its own **Shop** action rather than one generic destination.
 - Include delete controls with confirmation, plus clear empty, loading, failure, blocked-content, and removed-content states.
 
 ## Data and privacy
@@ -27,14 +31,16 @@ Let shoppers save completed ShopLook results, revisit their progress, and partic
 
 ## Technical approach
 - Add email/password and Google sign-in, a public sign-in page, and protected account pages. Keep the existing bearer-token middleware and add a single root session listener so the header reflects sign-in state.
-- Create profile, saved-look, follow, like, comment, report, and block tables with explicit grants, indexes, validation, and row-level access policies. Profile roles are not needed for this first version.
+- Create profile, saved-look, saved-item, follow, like, comment, report, and block tables with explicit grants, indexes, validation, and row-level access policies. Profile roles are not needed for this first version.
 - Create private image storage with per-user upload/delete rules and controlled delivery for owner-only or published images.
 - Add authenticated server functions for saving, publishing, feeds, profiles, follows, likes, comments, reports, blocks, and deletion. Derive identity from the signed-in session rather than submitted user IDs.
 - Keep the current public upload-and-AI flow unchanged until the shopper chooses **Save look**.
+- Extend the existing AI result schema with the selected mood and a short list of concrete supporting-item search terms. Generate safe India retailer search URLs from those terms on the server; do not invent exact products, prices, or stock.
 - Add protected saved-history and before/after pages, plus public Discover, look-detail, and creator-profile pages in the existing warm editorial ShopLook style.
 - Make feed counts and actions resistant to duplicate follows/likes, hide blocked users in both directions, and exclude private or removed looks from every public read path.
 
 ## Verification
+- Verify mood selection affects the AI request and result, and each submitted or suggested item reaches its correct external product or India retailer-search destination.
 - Verify account creation/sign-in, profile setup, explicit save, history reload, reopening suggestions, before/after comparison, publishing, feeds, follows, likes, comments, reports, blocks, product reuse, unpublishing, and deletion.
 - Use two test accounts to confirm private looks and files cannot be accessed cross-account, while published looks expose only intended fields.
 - Check the full private and social journeys on mobile and desktop and confirm the preview builds without errors.

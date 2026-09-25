@@ -4,7 +4,6 @@ import {
   ArrowUp,
   Check,
   CheckCircle2,
-  ChevronRight,
   Copy,
   Download,
   Expand,
@@ -17,7 +16,6 @@ import {
   MessageCircle,
   Plus,
   RotateCcw,
-  Send,
   Share2,
   ShoppingBag,
   Sparkles,
@@ -66,6 +64,10 @@ const looks = [
   { src: sageLook, name: "Terrace 72", colour: "Sage / Cream", price: "Illustrative price" },
   { src: creamLook, name: "Archive Gum", colour: "Chalk / Gum", price: "Illustrative price" },
 ] as const;
+
+function getLook(index: number) {
+  return looks[index] ?? looks[0];
+}
 
 function ShopLook() {
   const [view, setView] = useState<View>("start");
@@ -311,7 +313,7 @@ function ProcessingView({ productPhoto }: { productPhoto: string | null }) {
 }
 
 function LookView(props: { selected: number; reply: string; message: string; onMessage: (value: string) => void; onSend: (value?: string) => void; onDetail: () => void; onCompare: () => void; onShare: () => void; onBuy: () => void }) {
-  const look = looks[props.selected];
+  const look = getLook(props.selected);
   return (
     <section className="pb-8">
       <div className="relative aspect-[3/4] overflow-hidden bg-surface">
@@ -350,10 +352,11 @@ function ActionButton({ icon, label, onClick }: { icon: ReactNode; label: string
 }
 
 function DetailView({ selected, zoom, onZoom, onPose }: { selected: number; zoom: number[]; onZoom: (value: number[]) => void; onPose: () => void }) {
+  const look = getLook(selected);
   return (
     <section className="pb-9">
       <div className="relative aspect-[4/5] overflow-hidden bg-surface">
-        <img src={looks[selected].src} alt="Close view of the saved generated look" width={1024} height={1536} className="h-full w-full object-cover transition-transform duration-300" style={{ transform: `scale(${zoom[0]})`, transformOrigin: "50% 82%" }} />
+        <img src={look.src} alt="Close view of the saved generated look" width={1024} height={1536} className="h-full w-full object-cover transition-transform duration-300" style={{ transform: `scale(${zoom[0] ?? 1})`, transformOrigin: "50% 82%" }} />
         <span className="absolute bottom-4 left-4 rounded-full bg-overlay px-3 py-1.5 text-xs text-overlay-foreground">Original saved image</span>
       </div>
       <div className="px-5 pt-6">
@@ -371,6 +374,7 @@ function DetailView({ selected, zoom, onZoom, onPose }: { selected: number; zoom
 }
 
 function CompareView({ selected, count, onSelect, onAdd, onFull, onShare }: { selected: number; count: number; onSelect: (value: number) => void; onAdd: () => void; onFull: () => void; onShare: () => void }) {
+  const selectedLook = getLook(selected);
   return (
     <section className="px-4 pb-10 pt-6">
       <p className="text-xs font-semibold uppercase tracking-widest text-primary">Compare on you</p>
@@ -391,7 +395,7 @@ function CompareView({ selected, count, onSelect, onAdd, onFull, onShare }: { se
       </div>
       <div className="mt-5 rounded-lg bg-primary-soft p-4">
         <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Stylist recommends</p>
-        <p className="mt-2 font-display text-xl leading-6">{looks[selected].name} is the strongest match. It gives the outfit a clear focal point.</p>
+        <p className="mt-2 font-display text-xl leading-6">{selectedLook.name} is the strongest match. It gives the outfit a clear focal point.</p>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-2">
         <Button variant="outline" className="h-12 rounded-lg shadow-none" onClick={onFull}><Expand /> Full size</Button>
@@ -421,6 +425,7 @@ function BottomSheet({ open, onClose, title, children }: { open: boolean; onClos
 }
 
 function ShareSheet({ selected, copied, setCopied }: { selected: number; copied: boolean; setCopied: (value: boolean) => void }) {
+  const look = getLook(selected);
   const copy = async () => {
     try { await navigator.clipboard.writeText(window.location.href); } catch { /* unavailable in some preview contexts */ }
     setCopied(true);
@@ -432,7 +437,7 @@ function ShareSheet({ selected, copied, setCopied }: { selected: number; copied:
   };
   return (
     <div>
-      <div className="mx-auto aspect-[4/3] w-40 overflow-hidden rounded-md bg-surface"><img src={looks[selected].src} alt="Look selected to share" className="h-full w-full object-cover" /></div>
+      <div className="mx-auto aspect-[4/3] w-40 overflow-hidden rounded-md bg-surface"><img src={look.src} alt="Look selected to share" className="h-full w-full object-cover" /></div>
       <p className="mx-auto mt-4 max-w-xs text-center text-sm leading-6 text-muted-foreground">Share this illustrative look. Your original photo is not included.</p>
       <div className="mt-6 grid grid-cols-4 gap-2">
         {[{ icon: <MessageCircle />, label: "WhatsApp" }, { icon: <Instagram />, label: "Instagram" }, { icon: <span className="text-base font-bold">f</span>, label: "Facebook" }, { icon: <span className="text-sm font-bold">𝕏</span>, label: "X" }].map((item) => (
@@ -440,7 +445,7 @@ function ShareSheet({ selected, copied, setCopied }: { selected: number; copied:
         ))}
       </div>
       <div className="mt-5 grid grid-cols-2 gap-2">
-        <Button variant="outline" className="h-12 rounded-lg shadow-none" onClick={() => { const a = document.createElement("a"); a.href = looks[selected].src; a.download = "my-shoplook.jpg"; a.click(); }}><Download /> Download</Button>
+        <Button variant="outline" className="h-12 rounded-lg shadow-none" onClick={() => { const a = document.createElement("a"); a.href = look.src; a.download = "my-shoplook.jpg"; a.click(); }}><Download /> Download</Button>
         <Button className="h-12 rounded-lg" onClick={copy}>{copied ? <CheckCircle2 /> : <Copy />}{copied ? "Copied" : "Copy link"}</Button>
       </div>
     </div>
@@ -448,7 +453,7 @@ function ShareSheet({ selected, copied, setCopied }: { selected: number; copied:
 }
 
 function BuySheet({ selected }: { selected: number }) {
-  const look = looks[selected];
+  const look = getLook(selected);
   return (
     <div>
       <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-4 border-b border-border pb-5">

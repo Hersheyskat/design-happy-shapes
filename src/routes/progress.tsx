@@ -1,0 +1,15 @@
+import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { zodValidator } from "@tanstack/zod-adapter";
+
+import { ShopLookShell } from "@/components/shoplook-shell";
+import { Button } from "@/components/ui/button";
+import { listMyLooks } from "@/lib/community.functions";
+import type { SavedLookDto } from "@/lib/community.types";
+
+export const Route = createFileRoute("/progress")({ validateSearch: zodValidator(z.object({ first: z.string().default(""), second: z.string().default("") })), head: () => ({ meta: [{ title: "Style progress — ShopLook" }, { name: "description", content: "Compare two saved ShopLook results side by side." }, { property: "og:title", content: "Style progress — ShopLook" }, { property: "og:description", content: "Compare two saved ShopLook results side by side." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }), component: ProgressPage });
+
+function ProgressPage() { const { first, second } = Route.useSearch(); const load = useServerFn(listMyLooks); const [pair, setPair] = useState<SavedLookDto[]>([]); useEffect(() => { void load().then((looks) => setPair([looks.find((look) => look.id === first), looks.find((look) => look.id === second)].filter((look): look is SavedLookDto => Boolean(look)))); }, [first, second]); return <ShopLookShell><header className="px-5 pb-5 pt-7"><p className="text-xs font-semibold uppercase tracking-widest text-primary">Style progress</p><h1 className="mt-2 font-display text-4xl">Before &amp; after</h1></header>{pair.length === 2 ? <div className="grid grid-cols-2 gap-px bg-border"><ProgressLook label="Before" look={pair[0]} /><ProgressLook label="After" look={pair[1]} /></div> : <section className="px-6 py-20 text-center"><p className="text-sm text-muted-foreground">Select two saved looks first.</p><Button asChild className="mt-5"><Link to="/saved">Choose looks</Link></Button></section>}</ShopLookShell>; }
+function ProgressLook({ label, look }: { label: string; look: SavedLookDto }) { return <article className="bg-background pb-6"><div className="relative aspect-[3/4]"><img src={look.shopperImageUrl} alt={`${label}: ${look.advice.headline}`} className="size-full object-cover" /><span className="absolute left-2 top-2 rounded-full bg-overlay px-2 py-1 text-[10px] font-semibold uppercase text-overlay-foreground">{label}</span></div><div className="p-4"><p className="text-[10px] font-semibold uppercase text-primary">{look.mood}</p><h2 className="mt-1 font-display text-xl leading-5">{look.advice.headline}</h2><p className="mt-3 text-xs leading-5 text-muted-foreground">{look.advice.summary}</p><ul className="mt-4 space-y-2">{look.advice.adjustments.map((item) => <li key={item.title} className="text-xs leading-4"><strong>{item.title}:</strong> {item.detail}</li>)}</ul></div></article>; }

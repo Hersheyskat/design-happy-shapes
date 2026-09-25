@@ -14,7 +14,354 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      community_reports: {
+        Row: {
+          comment_id: string | null
+          created_at: string
+          details: string
+          id: string
+          look_id: string | null
+          profile_id: string | null
+          reason: string
+          reporter_id: string
+          status: string
+        }
+        Insert: {
+          comment_id?: string | null
+          created_at?: string
+          details?: string
+          id?: string
+          look_id?: string | null
+          profile_id?: string | null
+          reason: string
+          reporter_id: string
+          status?: string
+        }
+        Update: {
+          comment_id?: string | null
+          created_at?: string
+          details?: string
+          id?: string
+          look_id?: string | null
+          profile_id?: string | null
+          reason?: string
+          reporter_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "look_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_reports_look_id_fkey"
+            columns: ["look_id"]
+            isOneToOne: false
+            referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_reports_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      look_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_removed: boolean
+          look_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_removed?: boolean
+          look_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_removed?: boolean
+          look_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "look_comments_look_id_fkey"
+            columns: ["look_id"]
+            isOneToOne: false
+            referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "look_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      look_likes: {
+        Row: {
+          created_at: string
+          look_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          look_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          look_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "look_likes_look_id_fkey"
+            columns: ["look_id"]
+            isOneToOne: false
+            referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "look_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_path: string | null
+          bio: string
+          created_at: string
+          display_name: string
+          handle: string
+          id: string
+          style_preferences: string[]
+          updated_at: string
+        }
+        Insert: {
+          avatar_path?: string | null
+          bio?: string
+          created_at?: string
+          display_name: string
+          handle: string
+          id: string
+          style_preferences?: string[]
+          updated_at?: string
+        }
+        Update: {
+          avatar_path?: string | null
+          bio?: string
+          created_at?: string
+          display_name?: string
+          handle?: string
+          id?: string
+          style_preferences?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      saved_items: {
+        Row: {
+          created_at: string
+          destination_url: string
+          display_order: number
+          id: string
+          label: string
+          look_id: string
+          search_term: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          destination_url: string
+          display_order?: number
+          id?: string
+          label: string
+          look_id: string
+          search_term: string
+          source: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          destination_url?: string
+          display_order?: number
+          id?: string
+          label?: string
+          look_id?: string
+          search_term?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_items_look_id_fkey"
+            columns: ["look_id"]
+            isOneToOne: false
+            referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_looks: {
+        Row: {
+          adjustments: Json
+          colors: Json
+          created_at: string
+          headline: string
+          id: string
+          is_published: boolean
+          is_removed: boolean
+          mood: string
+          product_image_path: string | null
+          product_url: string | null
+          published_at: string | null
+          shopper_image_path: string
+          summary: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          adjustments: Json
+          colors: Json
+          created_at?: string
+          headline: string
+          id?: string
+          is_published?: boolean
+          is_removed?: boolean
+          mood: string
+          product_image_path?: string | null
+          product_url?: string | null
+          published_at?: string | null
+          shopper_image_path: string
+          summary: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          adjustments?: Json
+          colors?: Json
+          created_at?: string
+          headline?: string
+          id?: string
+          is_published?: boolean
+          is_removed?: boolean
+          mood?: string
+          product_image_path?: string | null
+          product_url?: string | null
+          published_at?: string | null
+          shopper_image_path?: string
+          summary?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_looks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_blocks_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -21,6 +21,13 @@ const adviceSchema = z.object({
       detail: z.string(),
     }),
   ),
+  shoppingItems: z.array(
+    z.object({
+      label: z.string(),
+      searchTerm: z.string(),
+      reason: z.string(),
+    }),
+  ),
 });
 
 type AnalysisInput = {
@@ -29,6 +36,7 @@ type AnalysisInput = {
   productImage: string | null;
   productMime: string | null;
   productUrl: string | null;
+  mood: "minimal" | "street" | "classic" | "romantic" | "sporty";
 };
 
 type GatewayError = Error & { statusCode?: number; responseBody?: string };
@@ -68,7 +76,9 @@ export async function createStyleAdvice(input: AnalysisInput) {
       text: [
         "Act as a concise, inclusive fashion stylist. Analyse the shopper's complete outfit and the product they are considering.",
         "This is look comparison and styling advice, never virtual try-on. Do not claim the product was placed on the person.",
-        "Return exactly 4 complementary colors and exactly 3 practical styling adjustments.",
+        `Build the advice around a ${input.mood} style mood.`,
+        "Return exactly 4 complementary colors, exactly 3 practical styling adjustments, and exactly 3 supporting items to shop for.",
+        "For each supporting item, provide a short label, an India-friendly retail search phrase, and one concise reason it completes this look.",
         "Color hex values must be valid six-digit hex colors. Keep every title short and every detail to one sentence.",
         input.productUrl ? `The shopper also supplied this product page as context: ${input.productUrl}` : "A product screenshot follows the outfit photo.",
       ].join("\n"),
@@ -97,7 +107,7 @@ export async function createStyleAdvice(input: AnalysisInput) {
       },
     });
 
-    const output: StyleAdvice | undefined = await result.output;
+    const output = await result.output;
     if (!output) return { ok: false as const, error: "ShopLook could not read this outfit clearly. Try a brighter, full-outfit photo." };
 
     return {
@@ -106,6 +116,10 @@ export async function createStyleAdvice(input: AnalysisInput) {
         ...output,
         colors: output.colors.slice(0, 4),
         adjustments: output.adjustments.slice(0, 3),
+        shoppingItems: output.shoppingItems.slice(0, 3).map((item) => ({
+          ...item,
+          destinationUrl: `https://www.google.com/search?tbm=shop&gl=in&q=${encodeURIComponent(item.searchTerm)}`,
+        })),
       },
       runId: runIdFetch.getRunId() ?? null,
     };

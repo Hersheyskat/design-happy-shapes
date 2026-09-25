@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -83,7 +83,7 @@ export const saveMyLook = createServerFn({ method: "POST" })
     return { id: inserted.data.id };
   });
 
-async function ensureProfile(context: { supabase: Parameters<typeof profileRead>[0]; userId: string; claims: Record<string, unknown> }) {
+async function ensureProfile(context: { supabase: SupabaseClient<Database>; userId: string; claims: { email?: unknown; user_metadata?: unknown } }) {
   const existing = await context.supabase.from("profiles").select("id").eq("id", context.userId).maybeSingle();
   if (existing.data) return;
   const email = typeof context.claims.email === "string" ? context.claims.email : "shopper";
@@ -93,9 +93,6 @@ async function ensureProfile(context: { supabase: Parameters<typeof profileRead>
   const result = await context.supabase.from("profiles").insert({ id: context.userId, handle: `${seed.length >= 3 ? seed : "shopper"}_${context.userId.slice(0, 6)}`, display_name: fullName.slice(0, 60) });
   if (result.error) throw new Error(result.error.message);
 }
-
-type AuthClient = Parameters<typeof ensureProfile>[0]["supabase"];
-function profileRead(client: AuthClient) { return client; }
 
 export const listMyLooks = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   await ensureProfile(context);

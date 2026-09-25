@@ -32,15 +32,15 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ShopLook — AI styling for better look comparisons" },
+      { title: "Shop Your Look — Personal, fun fashion shopping" },
       {
         name: "description",
-        content: "Upload your outfit and a product screenshot or link for complementary colors and practical styling suggestions.",
+        content: "Fashion shopping made personal and fun. Upload a product and your photo to create, compare, share, and shop your look.",
       },
-      { property: "og:title", content: "ShopLook — AI styling for better look comparisons" },
+      { property: "og:title", content: "Shop Your Look — Personal, fun fashion shopping" },
       {
         property: "og:description",
-        content: "Upload your outfit and a product screenshot or link for complementary colors and practical styling suggestions.",
+        content: "Fashion shopping made personal and fun. Upload a product and your photo to create, compare, share, and shop your look.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -260,9 +260,22 @@ function StartView({ shopperPhoto, productPhoto, productUrl, error, onUpload, on
   const ready = Boolean(shopperPhoto && (productPhoto || productUrl.trim()));
   return (
     <section className="px-5 pb-12 pt-8">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">Your next look, considered</p>
-      <h1 className="max-w-sm font-display text-[3.35rem] leading-[0.94] font-medium">Add two things.<br />See the magic.</h1>
-      <p className="mt-5 max-w-sm text-[15px] leading-6 text-muted-foreground">Show us what you’re wearing and the piece you’re considering. ShopLook finds the colors and small adjustments that bring them together.</p>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">Your personal AI shopping assistant</p>
+      <h1 className="max-w-sm font-display text-[3.35rem] leading-[0.94] font-medium">Shop your look</h1>
+      <p className="mt-4 max-w-sm text-lg leading-7 text-muted-foreground">Fashion shopping made personal and fun.</p>
+      <ol className="mt-6 space-y-3 border-y border-border py-5 text-sm leading-5">
+        {[
+          "Upload a screenshot or link of clothing or footwear you like.",
+          "Upload your photo.",
+          "Our fashion shopping AI assistant creates your look with the product.",
+          "Compare, share, and buy the best look.",
+        ].map((step, index) => (
+          <li key={step} className="grid grid-cols-[1.75rem_1fr] items-start gap-2">
+            <span className="grid size-7 place-items-center rounded-full bg-primary-soft text-xs font-semibold text-primary">{index + 1}</span>
+            <span className="pt-1 text-foreground">{step}</span>
+          </li>
+        ))}
+      </ol>
       <div className="mt-8 grid grid-cols-2 gap-3">
         <PhotoInput title="Your photo" detail="A clear, full outfit" photo={shopperPhoto} icon={<ImagePlus />} onChange={(event) => onUpload("shopper", event)} />
         <PhotoInput title="Product" detail="Screenshot or photo" photo={productPhoto} icon={<Upload />} onChange={(event) => onUpload("product", event)} />
@@ -424,8 +437,16 @@ function ShareSheet({ looks, activeLook, copied, setCopied }: { looks: Look[]; a
     window.setTimeout(() => setCopied(false), 1600);
   };
   const share = async () => {
-    if (navigator.share) await navigator.share({ title: "My ShopLook comparison", text: "Which look would you choose?", url: window.location.href });
-    else await copy();
+    if (!navigator.share) {
+      await copy();
+      return;
+    }
+    try {
+      await navigator.share({ title: "My ShopLook comparison", text: "Which look would you choose?", url: window.location.href });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      await copy();
+    }
   };
   return (
     <div>

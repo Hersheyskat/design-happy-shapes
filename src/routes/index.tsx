@@ -86,13 +86,6 @@ function ShopLook() {
     };
   }, [looks]);
 
-  useEffect(() => {
-    return () => {
-      if (shopperPhoto?.preview.startsWith("blob:")) URL.revokeObjectURL(shopperPhoto.preview);
-      if (productPhoto?.preview.startsWith("blob:")) URL.revokeObjectURL(productPhoto.preview);
-    };
-  }, [shopperPhoto, productPhoto]);
-
   const setUpload = (kind: UploadKind, event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -172,6 +165,8 @@ function ShopLook() {
   };
 
   const reset = () => {
+    if (shopperPhoto?.preview.startsWith("blob:")) URL.revokeObjectURL(shopperPhoto.preview);
+    if (productPhoto?.preview.startsWith("blob:")) URL.revokeObjectURL(productPhoto.preview);
     setView("start");
     setLooks([]);
     setShopperPhoto(null);

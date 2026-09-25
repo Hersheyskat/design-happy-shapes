@@ -73,11 +73,11 @@ export async function createStyleAdvice(input: AnalysisInput) {
         input.productUrl ? `The shopper also supplied this product page as context: ${input.productUrl}` : "A product screenshot follows the outfit photo.",
       ].join("\n"),
     },
-    { type: "image", image: new URL(input.shopperImage), mediaType: input.shopperMime },
+    { type: "file", data: { type: "url", url: new URL(input.shopperImage) }, mediaType: input.shopperMime },
   ];
 
   if (input.productImage && input.productMime) {
-    content.push({ type: "image", image: new URL(input.productImage), mediaType: input.productMime });
+    content.push({ type: "file", data: { type: "url", url: new URL(input.productImage) }, mediaType: input.productMime });
   }
 
   try {

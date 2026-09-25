@@ -29,5 +29,5 @@ const adviceInput = z
   });
 
 export const analyseShopLook = createServerFn({ method: "POST" })
-  .inputValidator((data) => adviceInput.parse(data))
+  .validator((data) => adviceInput.parse(data))
   .handler(async ({ data }) => createStyleAdvice(data));

@@ -15,6 +15,7 @@ const adviceInput = z
     productImage: dataImage.nullable(),
     productMime: z.enum(["image/jpeg", "image/png", "image/webp"]).nullable(),
     productUrl: z.string().trim().url().max(2048).nullable(),
+    mood: z.enum(["minimal", "street", "classic", "romantic", "sporty"]),
   })
   .superRefine((value, context) => {
     if (!value.productImage && !value.productUrl) {

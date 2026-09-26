@@ -19,6 +19,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 
 import sampleCoral from "@/assets/shoplook-coral.jpg";
@@ -35,6 +36,7 @@ import type { StyleAdvice } from "@/lib/style-advice.types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search) => z.object({ product: z.string().optional(), mood: z.enum(styleMoods).optional() }).parse(search),
   head: () => ({
     meta: [
       { title: "Shop Your Look — Personal, fun fashion shopping" },
@@ -75,8 +77,8 @@ function ShopLook() {
   const [shopperPhoto, setShopperPhoto] = useState<UploadPhoto | null>(null);
   const [productPhoto, setProductPhoto] = useState<UploadPhoto | null>(null);
   const [productUrl, setProductUrl] = useState("");
-  const { product: linkedProduct, mood: linkedMood } = Route.useSearch() as { product?: string; mood?: StyleMood };
-  const [mood, setMood] = useState<StyleMood | null>(linkedMood && styleMoods.includes(linkedMood) ? linkedMood : null);
+  const { product: linkedProduct, mood: linkedMood } = Route.useSearch();
+  const [mood, setMood] = useState<StyleMood | null>(linkedMood ?? null);
   const [advice, setAdvice] = useState<StyleAdvice | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");

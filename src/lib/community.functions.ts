@@ -54,7 +54,7 @@ export const ensureMyProfile = createServerFn({ method: "POST" })
     if (existing.data) return existing.data;
     const seed = String(context.claims.email ?? "shopper").split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16) || "shopper";
     const handle = `${seed.length >= 3 ? seed : "shopper"}_${context.userId.slice(0, 6)}`;
-    const displayName = String(context.claims.user_metadata?.full_name ?? context.claims.email ?? "ShopLook member").slice(0, 60);
+    const displayName = String(context.claims.user_metadata?.['full_name'] ?? context.claims.email ?? "ShopLook member").slice(0, 60);
     const created = await context.supabase.from("profiles").insert({ id: context.userId, handle, display_name: displayName }).select("id, handle, display_name, bio, style_preferences").single();
     if (created.error) throw new Error(created.error.message);
     return created.data;

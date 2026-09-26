@@ -402,7 +402,7 @@ function ProcessingView({ shopperPhoto, productPhoto }: { shopperPhoto: UploadPh
   );
 }
 
-function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, onCompare }: { shopperPhoto: UploadPhoto; productPhoto: UploadPhoto | null; productUrl: string; advice: StyleAdvice; onCompare: () => void }) {
+function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, mood, onCompare, onSave, savedId, saving, saveMessage }: { shopperPhoto: UploadPhoto; productPhoto: UploadPhoto | null; productUrl: string; advice: StyleAdvice; mood: StyleMood | null; onCompare: () => void; onSave: () => void; savedId: string | null; saving: boolean; saveMessage: string }) {
   return (
     <section className="pb-10">
       <div className="grid h-[23rem] grid-cols-[1fr_0.72fr] gap-1 bg-surface p-1">
@@ -412,7 +412,7 @@ function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, onCompare 
         </div>
       </div>
       <div className="px-5 pt-7">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style edit</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Your {mood} style edit</p>
         <h1 className="mt-2 font-display text-4xl font-medium leading-none">{advice.headline}</h1>
         <p className="mt-4 text-sm leading-6 text-muted-foreground">{advice.summary}</p>
 
@@ -429,6 +429,10 @@ function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, onCompare 
             {advice.adjustments.map((item, index) => <li key={`${item.title}-${index}`} className="grid grid-cols-[28px_1fr] gap-3 py-4"><span className="grid size-7 place-items-center rounded-full bg-primary-soft text-xs font-bold text-primary">{index + 1}</span><div><p className="text-sm font-semibold">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div></li>)}
           </ol>
         </div>
+        <ShopItems advice={advice} productUrl={productUrl} />
+        <Button variant="outline" className="mt-6 h-12 w-full" disabled={saving || Boolean(savedId)} onClick={onSave}>{saving ? <LoaderCircle className="animate-spin" /> : <Check />}{savedId ? "Saved privately" : "Save look"}</Button>
+        {saveMessage && <p role="status" className="mt-2 text-center text-xs text-muted-foreground">{saveMessage}</p>}
+        {savedId && <Button asChild variant="link" className="w-full"><Link to="/saved">View saved looks</Link></Button>}
         <Button className="mt-6 h-12 w-full rounded-lg" onClick={onCompare}><Expand /> Compare this look</Button>
         <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">AI suggestions are a starting point—your taste is the final word.</p>
       </div>
@@ -436,7 +440,12 @@ function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, onCompare 
   );
 }
 
-function CompareView({ looks, selected, onSelect, onAdd, onFull, onShare }: { looks: Look[]; selected: number; onSelect: (value: number) => void; onAdd: (event: ChangeEvent<HTMLInputElement>) => void; onFull: () => void; onShare: () => void }) {
+function ShopItems({ advice, productUrl }: { advice: StyleAdvice | null; productUrl: string }) {
+  if (!advice && !productUrl) return null;
+  return <div className="mt-7 border-t border-border pt-6"><h2 className="font-display text-2xl">Shop the details</h2><div className="mt-2 divide-y divide-border">{productUrl.startsWith("https://") && <a className="flex justify-between gap-3 py-4 text-sm" href={productUrl} target="_blank" rel="noopener noreferrer"><span>Original product<span className="block text-xs text-muted-foreground">Submitted product page</span></span><span>Shop ↗</span></a>}{advice?.shoppingItems.map((item) => <a key={item.searchTerm} href={item.destinationUrl} target="_blank" rel="noopener noreferrer" className="flex justify-between gap-3 py-4 text-sm"><span>{item.label}<span className="block text-xs text-muted-foreground">Retailer search · India</span></span><span>Shop ↗</span></a>)}</div></div>;
+}
+
+function CompareView({ looks, selected, onSelect, onAdd, onFull, onShare, advice, productUrl }: { looks: Look[]; selected: number; onSelect: (value: number) => void; onAdd: (event: ChangeEvent<HTMLInputElement>) => void; onFull: () => void; onShare: () => void; advice: StyleAdvice | null; productUrl: string }) {
   const addRef = useRef<HTMLInputElement>(null);
   const active = looks[selected] ?? looks[0];
   return (
@@ -458,16 +467,17 @@ function CompareView({ looks, selected, onSelect, onAdd, onFull, onShare }: { lo
       </div>
       <input ref={addRef} type="file" accept="image/*" className="sr-only" onChange={onAdd} aria-label="Choose another look" />
       {active && <div className="mt-5 rounded-lg bg-primary-soft p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-primary">Current pick</p><p className="mt-2 font-display text-xl leading-6">{active.name} has the strongest overall balance. Select another look to compare its details.</p><p className="mt-2 text-xs leading-5 text-muted-foreground">{active.note}</p></div>}
+      <ShopItems advice={advice} productUrl={productUrl} />
       <div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12 rounded-lg shadow-none" onClick={onFull}><Expand /> Full size</Button><Button className="h-12 rounded-lg" onClick={onShare}><Share2 /> Share comparison</Button></div>
     </section>
   );
 }
 
-function DetailView({ look, zoom, onZoom }: { look: Look; zoom: number[]; onZoom: (value: number[]) => void }) {
+function DetailView({ look, zoom, onZoom, advice, productUrl }: { look: Look; zoom: number[]; onZoom: (value: number[]) => void; advice: StyleAdvice | null; productUrl: string }) {
   return (
     <section className="pb-9">
       <div className="relative aspect-[4/5] overflow-hidden bg-surface"><img src={look.src} alt={`Full view of ${look.name}`} className="h-full w-full object-cover transition-transform duration-300" style={{ transform: `scale(${zoom[0] ?? 1})` }} /><span className="absolute bottom-4 left-4 rounded-full bg-overlay px-3 py-1.5 text-xs text-overlay-foreground">{look.name}</span></div>
-      <div className="px-5 pt-6"><div className="flex items-center gap-4"><ZoomOut className="size-4 text-muted-foreground" /><Slider min={1} max={2.2} step={0.1} value={zoom} onValueChange={onZoom} aria-label="Zoom image" /><ZoomIn className="size-4 text-muted-foreground" /></div><p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Zoom in to compare styling details. The original image remains unchanged.</p></div>
+      <div className="px-5 pt-6"><div className="flex items-center gap-4"><ZoomOut className="size-4 text-muted-foreground" /><Slider min={1} max={2.2} step={0.1} value={zoom} onValueChange={onZoom} aria-label="Zoom image" /><ZoomIn className="size-4 text-muted-foreground" /></div><p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Zoom in to compare styling details. The original image remains unchanged.</p><ShopItems advice={advice} productUrl={productUrl} /></div>
     </section>
   );
 }

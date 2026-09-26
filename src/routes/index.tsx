@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Check,
@@ -24,7 +24,12 @@ import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "r
 import sampleCoral from "@/assets/shoplook-coral.jpg";
 import sampleBlack from "@/assets/shoplook-black.jpg";
 import { Button } from "@/components/ui/button";
+import { AuthDialog } from "@/components/auth-dialog";
+import { ShopLookShell } from "@/components/shoplook-shell";
 import { Slider } from "@/components/ui/slider";
+import { saveMyLook } from "@/lib/community.functions";
+import { styleMoods, type StyleMood } from "@/lib/community.types";
+import { supabase } from "@/integrations/supabase/client";
 import { analyseShopLook } from "@/lib/style-advice.functions";
 import type { StyleAdvice } from "@/lib/style-advice.types";
 import { cn } from "@/lib/utils";
@@ -70,13 +75,22 @@ function ShopLook() {
   const [shopperPhoto, setShopperPhoto] = useState<UploadPhoto | null>(null);
   const [productPhoto, setProductPhoto] = useState<UploadPhoto | null>(null);
   const [productUrl, setProductUrl] = useState("");
+  const { product: linkedProduct, mood: linkedMood } = Route.useSearch() as { product?: string; mood?: StyleMood };
+  const [mood, setMood] = useState<StyleMood | null>(linkedMood && styleMoods.includes(linkedMood) ? linkedMood : null);
   const [advice, setAdvice] = useState<StyleAdvice | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [selected, setSelected] = useState(0);
   const [zoom, setZoom] = useState([1]);
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const analyse = useServerFn(analyseShopLook);
+  const save = useServerFn(saveMyLook);
+
+  useEffect(() => { if (linkedProduct?.startsWith("https://")) setProductUrl(linkedProduct); }, [linkedProduct]);
 
   useEffect(() => {
     return () => {
@@ -106,7 +120,7 @@ function ShopLook() {
   };
 
   const runAnalysis = async () => {
-    if (!shopperPhoto || (!productPhoto && !productUrl.trim())) return;
+    if (!shopperPhoto || (!productPhoto && !productUrl.trim()) || !mood) return;
     setView("processing");
     setAnalysisError(null);
     try {
@@ -119,6 +133,7 @@ function ShopLook() {
           productImage,
           productMime: productImage ? "image/jpeg" : null,
           productUrl: productUrl.trim() || null,
+          mood,
         },
       });
       if (!result.ok) {
@@ -136,6 +151,31 @@ function ShopLook() {
       setAnalysisError("ShopLook could not prepare these images. Please try different photos.");
       setView("start");
     }
+  };
+
+  const saveLook = async () => {
+    if (!shopperPhoto || !advice || !mood || savedId) return;
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) { setAuthOpen(true); return; }
+    setSaving(true); setSaveMessage("");
+    const uploaded: string[] = [];
+    try {
+      const upload = async (photo: UploadPhoto, kind: string) => {
+        const extension = photo.file.type === "image/png" ? "png" : photo.file.type === "image/webp" ? "webp" : "jpg";
+        const path = `${user.id}/looks/${crypto.randomUUID()}-${kind}.${extension}`;
+        const result = await supabase.storage.from("shoplook-media").upload(path, photo.file, { contentType: photo.file.type });
+        if (result.error) throw result.error;
+        uploaded.push(path);
+        return path;
+      };
+      const shopperImagePath = await upload(shopperPhoto, "outfit");
+      const productImagePath = productPhoto ? await upload(productPhoto, "product") : null;
+      const result = await save({ data: { shopperImagePath, productImagePath, productUrl: productUrl.trim() || null, mood, advice } });
+      setSavedId(result.id); setSaveMessage("Saved privately. Publish it from Saved looks when you're ready.");
+    } catch (error) {
+      await supabase.storage.from("shoplook-media").remove(uploaded);
+      setSaveMessage(error instanceof Error ? error.message : "Could not save this look. Try again.");
+    } finally { setSaving(false); }
   };
 
   const replaceLook = (slot: number, event: ChangeEvent<HTMLInputElement>) => {
@@ -172,7 +212,9 @@ function ShopLook() {
     setShopperPhoto(null);
     setProductPhoto(null);
     setProductUrl("");
+    setMood(null);
     setAdvice(null);
+    setSavedId(null); setSaveMessage("");
     setAnalysisError(null);
     setSelected(0);
     setZoom([1]);
@@ -181,8 +223,8 @@ function ShopLook() {
   const activeLook = looks[selected] ?? looks[0] ?? fallbackLook;
 
   return (
-    <main className="min-h-dvh bg-background text-foreground">
-      <div className="mx-auto min-h-dvh w-full max-w-[430px] border-x border-border/70 bg-background shadow-page">
+    <ShopLookShell>
+      <div className="pb-16">
         <AppHeader
           showBack={view === "detail" || view === "advice"}
           onBack={() => setView(view === "detail" ? "compare" : "start")}
@@ -194,6 +236,8 @@ function ShopLook() {
             shopperPhoto={shopperPhoto}
             productPhoto={productPhoto}
             productUrl={productUrl}
+            mood={mood}
+            onMoodChange={setMood}
             error={analysisError}
             onUpload={setUpload}
             onUrlChange={setProductUrl}
@@ -208,6 +252,11 @@ function ShopLook() {
             productPhoto={productPhoto}
             productUrl={productUrl}
             advice={advice}
+            mood={mood}
+            onSave={saveLook}
+            savedId={savedId}
+            saving={saving}
+            saveMessage={saveMessage}
             onCompare={() => setView("compare")}
           />
         )}
@@ -219,16 +268,19 @@ function ShopLook() {
             onAdd={addLook}
             onFull={() => setView("detail")}
             onShare={() => setShareOpen(true)}
+            advice={advice}
+            productUrl={productUrl}
           />
         )}
         {view === "detail" && activeLook && (
-          <DetailView look={activeLook} zoom={zoom} onZoom={setZoom} />
+          <DetailView look={activeLook} zoom={zoom} onZoom={setZoom} advice={advice} productUrl={productUrl} />
         )}
       </div>
       <BottomSheet open={shareOpen} onClose={() => setShareOpen(false)} title="Share comparison">
         <ShareSheet looks={looks} activeLook={activeLook} copied={copied} setCopied={setCopied} />
       </BottomSheet>
-    </main>
+      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} onSignedIn={() => void saveLook()} />
+    </ShopLookShell>
   );
 }
 
@@ -256,8 +308,8 @@ function AppHeader({ showBack, showReset, onBack, onReset }: { showBack: boolean
   );
 }
 
-function StartView({ shopperPhoto, productPhoto, productUrl, error, onUpload, onUrlChange, onAnalyse, onSamples }: { shopperPhoto: UploadPhoto | null; productPhoto: UploadPhoto | null; productUrl: string; error: string | null; onUpload: (kind: UploadKind, event: ChangeEvent<HTMLInputElement>) => void; onUrlChange: (value: string) => void; onAnalyse: () => void; onSamples: () => void }) {
-  const ready = Boolean(shopperPhoto && (productPhoto || productUrl.trim()));
+function StartView({ shopperPhoto, productPhoto, productUrl, mood, onMoodChange, error, onUpload, onUrlChange, onAnalyse, onSamples }: { shopperPhoto: UploadPhoto | null; productPhoto: UploadPhoto | null; productUrl: string; mood: StyleMood | null; onMoodChange: (value: StyleMood) => void; error: string | null; onUpload: (kind: UploadKind, event: ChangeEvent<HTMLInputElement>) => void; onUrlChange: (value: string) => void; onAnalyse: () => void; onSamples: () => void }) {
+  const ready = Boolean(shopperPhoto && (productPhoto || productUrl.trim()) && mood);
   return (
     <section className="px-5 pb-12 pt-8">
       <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">Your personal AI shopping assistant</p>
@@ -276,6 +328,7 @@ function StartView({ shopperPhoto, productPhoto, productUrl, error, onUpload, on
           </li>
         ))}
       </ol>
+      <fieldset className="mt-7"><legend className="text-sm font-semibold">Choose your style mood</legend><div className="mt-3 flex flex-wrap gap-2">{styleMoods.map((value) => <Button key={value} type="button" variant={mood === value ? "default" : "outline"} aria-pressed={mood === value} className="h-9 capitalize" onClick={() => onMoodChange(value)}>{value}</Button>)}</div></fieldset>
       <div className="mt-8 grid grid-cols-2 gap-3">
         <PhotoInput title="Your photo" detail="A clear, full outfit" photo={shopperPhoto} icon={<ImagePlus />} onChange={(event) => onUpload("shopper", event)} />
         <PhotoInput title="Product" detail="Screenshot or photo" photo={productPhoto} icon={<Upload />} onChange={(event) => onUpload("product", event)} />
@@ -288,7 +341,7 @@ function StartView({ shopperPhoto, productPhoto, productUrl, error, onUpload, on
       </label>
       {error && <div role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm leading-5 text-destructive">{error}</div>}
       <Button className="mt-5 h-13 w-full rounded-lg text-base" disabled={!ready} onClick={onAnalyse}><Sparkles /> See the magic</Button>
-      {!ready && <p className="mt-3 text-center text-xs text-muted-foreground">Add your photo and a product screenshot or link</p>}
+      {!ready && <p className="mt-3 text-center text-xs text-muted-foreground">Choose a mood, add your photo and a product screenshot or link</p>}
       <Button variant="ghost" className="mt-2 h-11 w-full text-xs text-muted-foreground" onClick={onSamples}>Or explore a sample comparison</Button>
       <div className="mt-7 flex items-start gap-3 border-t border-border pt-5 text-xs leading-5 text-muted-foreground">
         <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-surface"><Check className="size-3" /></span>

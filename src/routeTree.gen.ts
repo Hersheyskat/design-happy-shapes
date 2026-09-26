@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as SavedRouteImport } from './routes/saved'
+import { Route as LookLookIdRouteImport } from './routes/look.$lookId'
+import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const DiscoverRoute = DiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProgressRoute = ProgressRouteImport.update({
@@ -34,39 +42,82 @@ const SavedRoute = SavedRouteImport.update({
   path: '/saved',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LookLookIdRoute = LookLookIdRouteImport.update({
+  id: '/look/$lookId',
+  path: '/look/$lookId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileHandleRoute = ProfileHandleRouteImport.update({
+  id: '/$handle',
+  path: '/$handle',
+  getParentRoute: () => ProfileRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/discover': typeof DiscoverRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
+  '/look/$lookId': typeof LookLookIdRoute
+  '/profile/$handle': typeof ProfileHandleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/discover': typeof DiscoverRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
+  '/look/$lookId': typeof LookLookIdRoute
+  '/profile/$handle': typeof ProfileHandleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/discover': typeof DiscoverRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
+  '/look/$lookId': typeof LookLookIdRoute
+  '/profile/$handle': typeof ProfileHandleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/discover' | '/progress' | '/saved'
+  fullPaths:
+    | '/'
+    | '/discover'
+    | '/profile'
+    | '/progress'
+    | '/saved'
+    | '/look/$lookId'
+    | '/profile/$handle'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/discover' | '/progress' | '/saved'
-  id: '__root__' | '/' | '/discover' | '/progress' | '/saved'
+  to:
+    | '/'
+    | '/discover'
+    | '/profile'
+    | '/progress'
+    | '/saved'
+    | '/look/$lookId'
+    | '/profile/$handle'
+  id:
+    | '__root__'
+    | '/'
+    | '/discover'
+    | '/profile'
+    | '/progress'
+    | '/saved'
+    | '/look/$lookId'
+    | '/profile/$handle'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DiscoverRoute: typeof DiscoverRoute
+  ProfileRoute: typeof ProfileRouteWithChildren
   ProgressRoute: typeof ProgressRoute
   SavedRoute: typeof SavedRoute
+  LookLookIdRoute: typeof LookLookIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -85,6 +136,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DiscoverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/progress': {
       id: '/progress'
       path: '/progress'
@@ -99,14 +157,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SavedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/look/$lookId': {
+      id: '/look/$lookId'
+      path: '/look/$lookId'
+      fullPath: '/look/$lookId'
+      preLoaderRoute: typeof LookLookIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/$handle': {
+      id: '/profile/$handle'
+      path: '/$handle'
+      fullPath: '/profile/$handle'
+      preLoaderRoute: typeof ProfileHandleRouteImport
+      parentRoute: typeof ProfileRoute
+    }
   }
 }
+
+interface ProfileRouteChildren {
+  ProfileHandleRoute: typeof ProfileHandleRoute
+}
+
+const ProfileRouteChildren: ProfileRouteChildren = {
+  ProfileHandleRoute: ProfileHandleRoute,
+}
+
+const ProfileRouteWithChildren =
+  ProfileRoute._addFileChildren(ProfileRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DiscoverRoute: DiscoverRoute,
+  ProfileRoute: ProfileRouteWithChildren,
   ProgressRoute: ProgressRoute,
   SavedRoute: SavedRoute,
+  LookLookIdRoute: LookLookIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

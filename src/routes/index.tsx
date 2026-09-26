@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Check,
@@ -19,17 +19,24 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 
 import sampleCoral from "@/assets/shoplook-coral.jpg";
 import sampleBlack from "@/assets/shoplook-black.jpg";
 import { Button } from "@/components/ui/button";
+import { AuthDialog } from "@/components/auth-dialog";
+import { ShopLookShell } from "@/components/shoplook-shell";
 import { Slider } from "@/components/ui/slider";
+import { saveMyLook } from "@/lib/community.functions";
+import { styleMoods, type StyleMood } from "@/lib/community.types";
+import { supabase } from "@/integrations/supabase/client";
 import { analyseShopLook } from "@/lib/style-advice.functions";
 import type { StyleAdvice } from "@/lib/style-advice.types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search) => z.object({ product: z.string().optional(), mood: z.enum(styleMoods).optional() }).parse(search),
   head: () => ({
     meta: [
       { title: "Shop Your Look — Personal, fun fashion shopping" },
@@ -70,13 +77,22 @@ function ShopLook() {
   const [shopperPhoto, setShopperPhoto] = useState<UploadPhoto | null>(null);
   const [productPhoto, setProductPhoto] = useState<UploadPhoto | null>(null);
   const [productUrl, setProductUrl] = useState("");
+  const { product: linkedProduct, mood: linkedMood } = Route.useSearch();
+  const [mood, setMood] = useState<StyleMood | null>(linkedMood ?? null);
   const [advice, setAdvice] = useState<StyleAdvice | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [selected, setSelected] = useState(0);
   const [zoom, setZoom] = useState([1]);
   const [shareOpen, setShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const analyse = useServerFn(analyseShopLook);
+  const save = useServerFn(saveMyLook);
+
+  useEffect(() => { if (linkedProduct?.startsWith("https://")) setProductUrl(linkedProduct); }, [linkedProduct]);
 
   useEffect(() => {
     return () => {
@@ -106,7 +122,7 @@ function ShopLook() {
   };
 
   const runAnalysis = async () => {
-    if (!shopperPhoto || (!productPhoto && !productUrl.trim())) return;
+    if (!shopperPhoto || (!productPhoto && !productUrl.trim()) || !mood) return;
     setView("processing");
     setAnalysisError(null);
     try {
@@ -119,6 +135,7 @@ function ShopLook() {
           productImage,
           productMime: productImage ? "image/jpeg" : null,
           productUrl: productUrl.trim() || null,
+          mood,
         },
       });
       if (!result.ok) {
@@ -136,6 +153,31 @@ function ShopLook() {
       setAnalysisError("ShopLook could not prepare these images. Please try different photos.");
       setView("start");
     }
+  };
+
+  const saveLook = async () => {
+    if (!shopperPhoto || !advice || !mood || savedId) return;
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) { setAuthOpen(true); return; }
+    setSaving(true); setSaveMessage("");
+    const uploaded: string[] = [];
+    try {
+      const upload = async (photo: UploadPhoto, kind: string) => {
+        const extension = photo.file.type === "image/png" ? "png" : photo.file.type === "image/webp" ? "webp" : "jpg";
+        const path = `${user.id}/looks/${crypto.randomUUID()}-${kind}.${extension}`;
+        const result = await supabase.storage.from("shoplook-media").upload(path, photo.file, { contentType: photo.file.type });
+        if (result.error) throw result.error;
+        uploaded.push(path);
+        return path;
+      };
+      const shopperImagePath = await upload(shopperPhoto, "outfit");
+      const productImagePath = productPhoto ? await upload(productPhoto, "product") : null;
+      const result = await save({ data: { shopperImagePath, productImagePath, productUrl: productUrl.trim() || null, mood, advice } });
+      setSavedId(result.id); setSaveMessage("Saved privately. Publish it from Saved looks when you're ready.");
+    } catch (error) {
+      await supabase.storage.from("shoplook-media").remove(uploaded);
+      setSaveMessage(error instanceof Error ? error.message : "Could not save this look. Try again.");
+    } finally { setSaving(false); }
   };
 
   const replaceLook = (slot: number, event: ChangeEvent<HTMLInputElement>) => {
@@ -172,7 +214,9 @@ function ShopLook() {
     setShopperPhoto(null);
     setProductPhoto(null);
     setProductUrl("");
+    setMood(null);
     setAdvice(null);
+    setSavedId(null); setSaveMessage("");
     setAnalysisError(null);
     setSelected(0);
     setZoom([1]);
@@ -181,8 +225,8 @@ function ShopLook() {
   const activeLook = looks[selected] ?? looks[0] ?? fallbackLook;
 
   return (
-    <main className="min-h-dvh bg-background text-foreground">
-      <div className="mx-auto min-h-dvh w-full max-w-[430px] border-x border-border/70 bg-background shadow-page">
+    <ShopLookShell>
+      <div className="pb-16">
         <AppHeader
           showBack={view === "detail" || view === "advice"}
           onBack={() => setView(view === "detail" ? "compare" : "start")}
@@ -194,6 +238,8 @@ function ShopLook() {
             shopperPhoto={shopperPhoto}
             productPhoto={productPhoto}
             productUrl={productUrl}
+            mood={mood}
+            onMoodChange={setMood}
             error={analysisError}
             onUpload={setUpload}
             onUrlChange={setProductUrl}
@@ -208,6 +254,11 @@ function ShopLook() {
             productPhoto={productPhoto}
             productUrl={productUrl}
             advice={advice}
+            mood={mood}
+            onSave={saveLook}
+            savedId={savedId}
+            saving={saving}
+            saveMessage={saveMessage}
             onCompare={() => setView("compare")}
           />
         )}
@@ -219,16 +270,19 @@ function ShopLook() {
             onAdd={addLook}
             onFull={() => setView("detail")}
             onShare={() => setShareOpen(true)}
+            advice={advice}
+            productUrl={productUrl}
           />
         )}
         {view === "detail" && activeLook && (
-          <DetailView look={activeLook} zoom={zoom} onZoom={setZoom} />
+          <DetailView look={activeLook} zoom={zoom} onZoom={setZoom} advice={advice} productUrl={productUrl} />
         )}
       </div>
       <BottomSheet open={shareOpen} onClose={() => setShareOpen(false)} title="Share comparison">
         <ShareSheet looks={looks} activeLook={activeLook} copied={copied} setCopied={setCopied} />
       </BottomSheet>
-    </main>
+      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} onSignedIn={() => void saveLook()} />
+    </ShopLookShell>
   );
 }
 
@@ -256,8 +310,8 @@ function AppHeader({ showBack, showReset, onBack, onReset }: { showBack: boolean
   );
 }
 
-function StartView({ shopperPhoto, productPhoto, productUrl, error, onUpload, onUrlChange, onAnalyse, onSamples }: { shopperPhoto: UploadPhoto | null; productPhoto: UploadPhoto | null; productUrl: string; error: string | null; onUpload: (kind: UploadKind, event: ChangeEvent<HTMLInputElement>) => void; onUrlChange: (value: string) => void; onAnalyse: () => void; onSamples: () => void }) {
-  const ready = Boolean(shopperPhoto && (productPhoto || productUrl.trim()));
+function StartView({ shopperPhoto, productPhoto, productUrl, mood, onMoodChange, error, onUpload, onUrlChange, onAnalyse, onSamples }: { shopperPhoto: UploadPhoto | null; productPhoto: UploadPhoto | null; productUrl: string; mood: StyleMood | null; onMoodChange: (value: StyleMood) => void; error: string | null; onUpload: (kind: UploadKind, event: ChangeEvent<HTMLInputElement>) => void; onUrlChange: (value: string) => void; onAnalyse: () => void; onSamples: () => void }) {
+  const ready = Boolean(shopperPhoto && (productPhoto || productUrl.trim()) && mood);
   return (
     <section className="px-5 pb-12 pt-8">
       <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">Your personal AI shopping assistant</p>
@@ -276,6 +330,7 @@ function StartView({ shopperPhoto, productPhoto, productUrl, error, onUpload, on
           </li>
         ))}
       </ol>
+      <fieldset className="mt-7"><legend className="text-sm font-semibold">Choose your style mood</legend><div className="mt-3 flex flex-wrap gap-2">{styleMoods.map((value) => <Button key={value} type="button" variant={mood === value ? "default" : "outline"} aria-pressed={mood === value} className="h-9 capitalize" onClick={() => onMoodChange(value)}>{value}</Button>)}</div></fieldset>
       <div className="mt-8 grid grid-cols-2 gap-3">
         <PhotoInput title="Your photo" detail="A clear, full outfit" photo={shopperPhoto} icon={<ImagePlus />} onChange={(event) => onUpload("shopper", event)} />
         <PhotoInput title="Product" detail="Screenshot or photo" photo={productPhoto} icon={<Upload />} onChange={(event) => onUpload("product", event)} />
@@ -288,7 +343,7 @@ function StartView({ shopperPhoto, productPhoto, productUrl, error, onUpload, on
       </label>
       {error && <div role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm leading-5 text-destructive">{error}</div>}
       <Button className="mt-5 h-13 w-full rounded-lg text-base" disabled={!ready} onClick={onAnalyse}><Sparkles /> See the magic</Button>
-      {!ready && <p className="mt-3 text-center text-xs text-muted-foreground">Add your photo and a product screenshot or link</p>}
+      {!ready && <p className="mt-3 text-center text-xs text-muted-foreground">Choose a mood, add your photo and a product screenshot or link</p>}
       <Button variant="ghost" className="mt-2 h-11 w-full text-xs text-muted-foreground" onClick={onSamples}>Or explore a sample comparison</Button>
       <div className="mt-7 flex items-start gap-3 border-t border-border pt-5 text-xs leading-5 text-muted-foreground">
         <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-surface"><Check className="size-3" /></span>
@@ -349,7 +404,7 @@ function ProcessingView({ shopperPhoto, productPhoto }: { shopperPhoto: UploadPh
   );
 }
 
-function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, onCompare }: { shopperPhoto: UploadPhoto; productPhoto: UploadPhoto | null; productUrl: string; advice: StyleAdvice; onCompare: () => void }) {
+function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, mood, onCompare, onSave, savedId, saving, saveMessage }: { shopperPhoto: UploadPhoto; productPhoto: UploadPhoto | null; productUrl: string; advice: StyleAdvice; mood: StyleMood | null; onCompare: () => void; onSave: () => void; savedId: string | null; saving: boolean; saveMessage: string }) {
   return (
     <section className="pb-10">
       <div className="grid h-[23rem] grid-cols-[1fr_0.72fr] gap-1 bg-surface p-1">
@@ -359,7 +414,7 @@ function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, onCompare 
         </div>
       </div>
       <div className="px-5 pt-7">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style edit</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Your {mood} style edit</p>
         <h1 className="mt-2 font-display text-4xl font-medium leading-none">{advice.headline}</h1>
         <p className="mt-4 text-sm leading-6 text-muted-foreground">{advice.summary}</p>
 
@@ -376,6 +431,10 @@ function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, onCompare 
             {advice.adjustments.map((item, index) => <li key={`${item.title}-${index}`} className="grid grid-cols-[28px_1fr] gap-3 py-4"><span className="grid size-7 place-items-center rounded-full bg-primary-soft text-xs font-bold text-primary">{index + 1}</span><div><p className="text-sm font-semibold">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div></li>)}
           </ol>
         </div>
+        <ShopItems advice={advice} productUrl={productUrl} />
+        <Button variant="outline" className="mt-6 h-12 w-full" disabled={saving || Boolean(savedId)} onClick={onSave}>{saving ? <LoaderCircle className="animate-spin" /> : <Check />}{savedId ? "Saved privately" : "Save look"}</Button>
+        {saveMessage && <p role="status" className="mt-2 text-center text-xs text-muted-foreground">{saveMessage}</p>}
+        {savedId && <Button asChild variant="link" className="w-full"><Link to="/saved">View saved looks</Link></Button>}
         <Button className="mt-6 h-12 w-full rounded-lg" onClick={onCompare}><Expand /> Compare this look</Button>
         <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">AI suggestions are a starting point—your taste is the final word.</p>
       </div>
@@ -383,7 +442,12 @@ function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, onCompare 
   );
 }
 
-function CompareView({ looks, selected, onSelect, onAdd, onFull, onShare }: { looks: Look[]; selected: number; onSelect: (value: number) => void; onAdd: (event: ChangeEvent<HTMLInputElement>) => void; onFull: () => void; onShare: () => void }) {
+function ShopItems({ advice, productUrl }: { advice: StyleAdvice | null; productUrl: string }) {
+  if (!advice && !productUrl) return null;
+  return <div className="mt-7 border-t border-border pt-6"><h2 className="font-display text-2xl">Shop the details</h2><div className="mt-2 divide-y divide-border">{productUrl.startsWith("https://") && <a className="flex justify-between gap-3 py-4 text-sm" href={productUrl} target="_blank" rel="noopener noreferrer"><span>Original product<span className="block text-xs text-muted-foreground">Submitted product page</span></span><span>Shop ↗</span></a>}{advice?.shoppingItems.map((item) => <a key={item.searchTerm} href={item.destinationUrl} target="_blank" rel="noopener noreferrer" className="flex justify-between gap-3 py-4 text-sm"><span>{item.label}<span className="block text-xs text-muted-foreground">Retailer search · India</span></span><span>Shop ↗</span></a>)}</div></div>;
+}
+
+function CompareView({ looks, selected, onSelect, onAdd, onFull, onShare, advice, productUrl }: { looks: Look[]; selected: number; onSelect: (value: number) => void; onAdd: (event: ChangeEvent<HTMLInputElement>) => void; onFull: () => void; onShare: () => void; advice: StyleAdvice | null; productUrl: string }) {
   const addRef = useRef<HTMLInputElement>(null);
   const active = looks[selected] ?? looks[0];
   return (
@@ -405,16 +469,17 @@ function CompareView({ looks, selected, onSelect, onAdd, onFull, onShare }: { lo
       </div>
       <input ref={addRef} type="file" accept="image/*" className="sr-only" onChange={onAdd} aria-label="Choose another look" />
       {active && <div className="mt-5 rounded-lg bg-primary-soft p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-primary">Current pick</p><p className="mt-2 font-display text-xl leading-6">{active.name} has the strongest overall balance. Select another look to compare its details.</p><p className="mt-2 text-xs leading-5 text-muted-foreground">{active.note}</p></div>}
+      <ShopItems advice={advice} productUrl={productUrl} />
       <div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12 rounded-lg shadow-none" onClick={onFull}><Expand /> Full size</Button><Button className="h-12 rounded-lg" onClick={onShare}><Share2 /> Share comparison</Button></div>
     </section>
   );
 }
 
-function DetailView({ look, zoom, onZoom }: { look: Look; zoom: number[]; onZoom: (value: number[]) => void }) {
+function DetailView({ look, zoom, onZoom, advice, productUrl }: { look: Look; zoom: number[]; onZoom: (value: number[]) => void; advice: StyleAdvice | null; productUrl: string }) {
   return (
     <section className="pb-9">
       <div className="relative aspect-[4/5] overflow-hidden bg-surface"><img src={look.src} alt={`Full view of ${look.name}`} className="h-full w-full object-cover transition-transform duration-300" style={{ transform: `scale(${zoom[0] ?? 1})` }} /><span className="absolute bottom-4 left-4 rounded-full bg-overlay px-3 py-1.5 text-xs text-overlay-foreground">{look.name}</span></div>
-      <div className="px-5 pt-6"><div className="flex items-center gap-4"><ZoomOut className="size-4 text-muted-foreground" /><Slider min={1} max={2.2} step={0.1} value={zoom} onValueChange={onZoom} aria-label="Zoom image" /><ZoomIn className="size-4 text-muted-foreground" /></div><p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Zoom in to compare styling details. The original image remains unchanged.</p></div>
+      <div className="px-5 pt-6"><div className="flex items-center gap-4"><ZoomOut className="size-4 text-muted-foreground" /><Slider min={1} max={2.2} step={0.1} value={zoom} onValueChange={onZoom} aria-label="Zoom image" /><ZoomIn className="size-4 text-muted-foreground" /></div><p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Zoom in to compare styling details. The original image remains unchanged.</p><ShopItems advice={advice} productUrl={productUrl} /></div>
     </section>
   );
 }

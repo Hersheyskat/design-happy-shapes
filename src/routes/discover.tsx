@@ -17,7 +17,7 @@ export const Route = createFileRoute("/discover")({
 
 function DiscoverPage() {
   const { data } = useSuspenseQuery(discoverQuery);
-  return <ShopLookShell><header className="border-b border-border px-5 pb-5 pt-7"><p className="text-xs font-semibold uppercase tracking-widest text-primary">ShopLook community</p><h1 className="mt-2 font-display text-4xl">Discover</h1><p className="mt-2 text-sm text-muted-foreground">Real looks, useful details, products you can start with.</p></header>{data.length ? <div className="pt-2">{data.map((look) => <LookCard key={look.id} look={look} />)}</div> : <PageMessage title="The first looks are coming" message="Publish a saved look to start the community." />}</ShopLookShell>;
+  return <ShopLookShell><header className="border-b border-border px-5 pb-5 pt-7"><p className="text-xs font-semibold uppercase tracking-widest text-primary">ShopLook community</p><h1 className="mt-2 font-display text-4xl">Discover</h1><p className="mt-2 text-sm text-muted-foreground">Real looks, useful details, products you can start with.</p></header>{data.length ? <div className="pt-2">{data.map((look) => <LookCard key={look.id} look={look} />)}</div> : <section className="px-6 py-24 text-center"><h2 className="font-display text-3xl">The first looks are coming</h2><p className="mt-3 text-sm text-muted-foreground">Publish a saved look to start the community.</p></section>}</ShopLookShell>;
 }
 
 function PageMessage({ title, message }: { title: string; message: string }) { return <ShopLookShell><section className="px-6 py-24 text-center"><h1 className="font-display text-3xl">{title}</h1><p className="mt-3 text-sm text-muted-foreground">{message}</p></section></ShopLookShell>; }

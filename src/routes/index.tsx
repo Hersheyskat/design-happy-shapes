@@ -115,6 +115,9 @@ function ShopLook() {
       const response = await fetch("/api/generate-look", { method: "POST", body: form });
       const result = await response.json().catch(() => ({})) as { image?: string; message?: string };
       if (!response.ok || !result.image) throw new Error(result.message ?? "OpenRouter could not make this look right now.");
+      const nextImage = new Image();
+      nextImage.src = result.image;
+      await nextImage.decode();
       setGenerated((current) => ({ ...current, [product.id]: result.image as string }));
       setActiveId(product.id);
     } catch (reason) {

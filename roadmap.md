@@ -10,4 +10,5 @@
 - [x] Remove the misnamed OpenRouter credential from the Google key slot to prevent accidental use.
 - [x] Offer the secure key-entry form again; do not accept a pasted key in chat.
 - [x] Add the four supplied product photos to the catalog; exact purchase links remain blocked until provided.
+- [x] Polish the opening photo choice, distinguish side-by-side and AI results, and verify the demo journey on phone and desktop.
 - [ ] Replace Amazon India search links with exact product pages when the shop URLs are provided (blocked: product URLs not provided).

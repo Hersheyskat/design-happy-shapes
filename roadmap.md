@@ -1,11 +1,7 @@
 # Roadmap
 
-- [x] Rework the first page around uploading a shopper photo plus a product screenshot or link.
-- [x] Add AI Gateway analysis for complementary colors and styling adjustments.
-- [x] Preserve ShopLook as a look-comparison tool, not virtual try-on.
-- [x] Verify the complete first-page flow on mobile and desktop.
-
-- [ ] Add explicit saved looks with private image storage and account ownership.
-- [ ] Add saved-history browsing and full suggestion restoration.
-- [ ] Add two-look before/after progress comparison.
-- [ ] Verify save, revisit, compare, delete, privacy, mobile, and desktop flows.
+- [x] Add the demo-first photo upload and optional style note.
+- [x] Show an illustrative apparel preview with tappable product choices.
+- [x] Add favorites, scrollable four-up comparison, share handoffs, and retailer shopping search.
+- [ ] Verify the demo journey on mobile and desktop.
+- [ ] Verify the signed-in saved-history journey (blocked: no test account and AI credits unavailable).

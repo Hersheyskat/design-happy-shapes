@@ -1,524 +1,170 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  Check,
-  Copy,
-  Download,
-  Expand,
-  ImagePlus,
-  LoaderCircle,
-  Link as LinkIcon,
-  Palette,
-  Plus,
-  RotateCcw,
-  Share2,
-  Sparkles,
-  Upload,
-  X,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
-import { useServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { ArrowLeft, ArrowRight, Check, Copy, Heart, ImagePlus, Instagram, Link as LinkIcon, MessageCircle, RotateCcw, Share2, ShoppingBag, Upload, X } from "lucide-react";
 
-import sampleCoral from "@/assets/shoplook-coral.jpg";
-import sampleBlack from "@/assets/shoplook-black.jpg";
 import { Button } from "@/components/ui/button";
-import { AuthDialog } from "@/components/auth-dialog";
 import { ShopLookShell } from "@/components/shoplook-shell";
-import { Slider } from "@/components/ui/slider";
-import { saveMyLook } from "@/lib/community.functions";
-import { styleMoods, type StyleMood } from "@/lib/community.types";
-import { supabase } from "@/integrations/supabase/client";
-import { analyseShopLook } from "@/lib/style-advice.functions";
-import type { StyleAdvice } from "@/lib/style-advice.types";
-import { cn } from "@/lib/utils";
+import samplePerson from "@/assets/shoplook-coral.jpg";
+import coralJacket from "@/assets/demo-coral-jacket.png";
+import blackJacket from "@/assets/demo-black-jacket.png";
+import ivoryShirt from "@/assets/demo-ivory-shirt.png";
+import sageTop from "@/assets/demo-sage-top.png";
+import denimJacket from "@/assets/demo-blue-denim.png";
+import stripedShirt from "@/assets/demo-striped-shirt.png";
+
+type Product = { id: string; name: string; category: string; image: string; search: string };
+const products: Product[] = [
+  { id: "coral", name: "Coral blazer", category: "The statement", image: coralJacket, search: "coral cropped blazer women" },
+  { id: "black", name: "Tailored blazer", category: "Everyday sharp", image: blackJacket, search: "black oversized blazer women" },
+  { id: "ivory", name: "Linen shirt", category: "Easy layers", image: ivoryShirt, search: "ivory linen shirt women" },
+  { id: "sage", name: "Sage knit", category: "Soft color", image: sageTop, search: "sage green knit top women" },
+  { id: "denim", name: "Denim jacket", category: "Off-duty", image: denimJacket, search: "cropped denim jacket women" },
+  { id: "stripe", name: "Striped shirt", category: "A classic", image: stripedShirt, search: "blue striped shirt women" },
+];
 
 export const Route = createFileRoute("/")({
-  validateSearch: (search) => z.object({ product: z.string().optional(), mood: z.enum(styleMoods).optional() }).parse(search),
-  head: () => ({
-    meta: [
-      { title: "Shop Your Look — Personal, fun fashion shopping" },
-      {
-        name: "description",
-        content: "Fashion shopping made personal and fun. Upload a product and your photo to create, compare, share, and shop your look.",
-      },
-      { property: "og:title", content: "Shop Your Look — Personal, fun fashion shopping" },
-      {
-        property: "og:description",
-        content: "Fashion shopping made personal and fun. Upload a product and your photo to create, compare, share, and shop your look.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () => ({ meta: [
+    { title: "Shop your look — ShopLook" },
+    { name: "description", content: "Upload your photo, explore apparel on your look, compare favorites, share and shop." },
+    { property: "og:title", content: "Shop your look — ShopLook" },
+    { property: "og:description", content: "Explore apparel on your photo, compare favorites, share and shop." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
+  ] }),
   component: ShopLook,
 });
 
-type View = "start" | "processing" | "advice" | "compare" | "detail";
-type Look = { src: string; name: string; note: string; uploaded: boolean };
-type UploadKind = "shopper" | "product";
+function shopUrl(product: Product) {
+  return `https://www.google.com/search?tbm=shop&gl=in&q=${encodeURIComponent(product.search)}`;
+}
 
-type UploadPhoto = {
-  file: File;
-  preview: string;
-};
+function LookImage({ person, product, label }: { person: string; product: Product; label?: string }) {
+  return <div className="relative aspect-[2/3] w-full overflow-hidden bg-surface">
+    <img src={person} alt="Your uploaded photo" className="absolute inset-0 size-full object-cover" />
+    <img src={product.image} alt={`${product.name} preview layer`} className="absolute left-[25%] top-[16%] h-[40%] w-[51%] object-fill drop-shadow-md" />
+    {label && <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold uppercase text-overlay-foreground">{label}</span>}
+  </div>;
+}
 
-const sampleLooks: Look[] = [
-  { src: sampleCoral, name: "Look 01", note: "Warm accent · relaxed proportions", uploaded: false },
-  { src: sampleBlack, name: "Look 02", note: "Monochrome · sharper finish", uploaded: false },
-];
-const fallbackLook: Look = { src: sampleCoral, name: "Look 01", note: "Warm accent · relaxed proportions", uploaded: false };
+async function makeLookImage(person: string, product: Product): Promise<File> {
+  const load = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image(); image.onload = () => resolve(image); image.onerror = reject; image.src = src;
+  });
+  const [photo, garment] = await Promise.all([load(person), load(product.image)]);
+  const canvas = document.createElement("canvas"); canvas.width = 800; canvas.height = 1200;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Unable to prepare this image.");
+  const scale = Math.max(canvas.width / photo.width, canvas.height / photo.height);
+  context.drawImage(photo, (canvas.width - photo.width * scale) / 2, (canvas.height - photo.height * scale) / 2, photo.width * scale, photo.height * scale);
+  context.drawImage(garment, 200, 192, 408, 480);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) throw new Error("Unable to prepare this image.");
+  return new File([blob], `shoplook-${product.id}.png`, { type: "image/png" });
+}
 
 function ShopLook() {
-  const [view, setView] = useState<View>("start");
-  const [looks, setLooks] = useState<Look[]>([]);
-  const [shopperPhoto, setShopperPhoto] = useState<UploadPhoto | null>(null);
-  const [productPhoto, setProductPhoto] = useState<UploadPhoto | null>(null);
-  const [productUrl, setProductUrl] = useState("");
-  const { product: linkedProduct, mood: linkedMood } = Route.useSearch();
-  const [mood, setMood] = useState<StyleMood | null>(linkedMood ?? null);
-  const [advice, setAdvice] = useState<StyleAdvice | null>(null);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [saveMessage, setSaveMessage] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [savedId, setSavedId] = useState<string | null>(null);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [selected, setSelected] = useState(0);
-  const [zoom, setZoom] = useState([1]);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const analyse = useServerFn(analyseShopLook);
-  const save = useServerFn(saveMyLook);
+  const [view, setView] = useState<"start" | "try" | "compare">("start");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [activeId, setActiveId] = useState(products[0].id);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [shareId, setShareId] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const person = photo ?? samplePerson;
+  const active = products.find((product) => product.id === activeId) ?? products[0];
+  const shareProduct = products.find((product) => product.id === shareId);
+  const comparison = favorites.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product));
 
-  useEffect(() => { if (linkedProduct?.startsWith("https://")) setProductUrl(linkedProduct); }, [linkedProduct]);
+  useEffect(() => () => { if (photo?.startsWith("blob:")) URL.revokeObjectURL(photo); }, [photo]);
 
-  useEffect(() => {
-    return () => {
-      looks.forEach((look) => {
-        if (look.uploaded && look.src.startsWith("blob:")) URL.revokeObjectURL(look.src);
-      });
-    };
-  }, [looks]);
-
-  const setUpload = (kind: UploadKind, event: ChangeEvent<HTMLInputElement>) => {
+  function upload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    setAnalysisError(null);
-    if (!(["image/jpeg", "image/png", "image/webp"] as string[]).includes(file.type)) {
-      setAnalysisError("Choose a JPG, PNG, or WebP image.");
-      return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 12_000_000) {
+      setError("Choose a JPG, PNG or WebP photo under 12 MB."); return;
     }
-    if (file.size > 12_000_000) {
-      setAnalysisError("Choose an image smaller than 12 MB.");
-      return;
-    }
-    const update = kind === "shopper" ? setShopperPhoto : setProductPhoto;
-    update((current) => {
-      if (current?.preview.startsWith("blob:")) URL.revokeObjectURL(current.preview);
-      return { file, preview: URL.createObjectURL(file) };
-    });
-  };
+    setError(""); setPhoto(URL.createObjectURL(file));
+    event.target.value = "";
+  }
 
-  const runAnalysis = async () => {
-    if (!shopperPhoto || (!productPhoto && !productUrl.trim()) || !mood) return;
-    setView("processing");
-    setAnalysisError(null);
+  function toggleFavorite(id: string) {
+    setFavorites((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
+
+  async function shareImage(product: Product) {
     try {
-      const shopperImage = await imageToDataUrl(shopperPhoto.file);
-      const productImage = productPhoto ? await imageToDataUrl(productPhoto.file) : null;
-      const result = await analyse({
-        data: {
-          shopperImage,
-          shopperMime: "image/jpeg",
-          productImage,
-          productMime: productImage ? "image/jpeg" : null,
-          productUrl: productUrl.trim() || null,
-          mood,
-        },
-      });
-      if (!result.ok) {
-        setAnalysisError(result.error);
-        setView("start");
-        return;
+      const image = await makeLookImage(person, product);
+      if (navigator.canShare?.({ files: [image] })) {
+        await navigator.share({ files: [image], title: `My ShopLook — ${product.name}` });
+      } else {
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(image);
+        link.href = url; link.download = image.name; link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        setMessage("Image downloaded. You can post it to Instagram or WhatsApp.");
       }
-      setAdvice(result.advice);
-      setLooks([
-        { src: shopperPhoto.preview, name: "Your look", note: "Current outfit", uploaded: false },
-        ...(productPhoto ? [{ src: productPhoto.preview, name: "Product", note: "Product reference", uploaded: false }] : []),
-      ]);
-      setView("advice");
-    } catch {
-      setAnalysisError("ShopLook could not prepare these images. Please try different photos.");
-      setView("start");
+    } catch (reason) {
+      if (reason instanceof DOMException && reason.name === "AbortError") return;
+      setMessage("Could not share this image. Please try again.");
     }
-  };
+  }
 
-  const saveLook = async () => {
-    if (!shopperPhoto || !advice || !mood || savedId) return;
-    const user = (await supabase.auth.getUser()).data.user;
-    if (!user) { setAuthOpen(true); return; }
-    setSaving(true); setSaveMessage("");
-    const uploaded: string[] = [];
-    try {
-      const upload = async (photo: UploadPhoto, kind: string) => {
-        const extension = photo.file.type === "image/png" ? "png" : photo.file.type === "image/webp" ? "webp" : "jpg";
-        const path = `${user.id}/looks/${crypto.randomUUID()}-${kind}.${extension}`;
-        const result = await supabase.storage.from("shoplook-media").upload(path, photo.file, { contentType: photo.file.type });
-        if (result.error) throw result.error;
-        uploaded.push(path);
-        return path;
-      };
-      const shopperImagePath = await upload(shopperPhoto, "outfit");
-      const productImagePath = productPhoto ? await upload(productPhoto, "product") : null;
-      const result = await save({ data: { shopperImagePath, productImagePath, productUrl: productUrl.trim() || null, mood, advice } });
-      setSavedId(result.id); setSaveMessage("Saved privately. Publish it from Saved looks when you're ready.");
-    } catch (error) {
-      await supabase.storage.from("shoplook-media").remove(uploaded);
-      setSaveMessage(error instanceof Error ? error.message : "Could not save this look. Try again.");
-    } finally { setSaving(false); }
-  };
+  async function copyLink() {
+    try { await navigator.clipboard.writeText(window.location.href); setMessage("Link copied. Your private photo is not included in this link."); }
+    catch { setMessage("Copying is unavailable in this browser."); }
+  }
 
-  const replaceLook = (slot: number, event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const src = URL.createObjectURL(file);
-    setLooks((current) => {
-      const previous = current[slot];
-      if (previous?.uploaded && previous.src.startsWith("blob:")) URL.revokeObjectURL(previous.src);
-      const next = [...current];
-      next[slot] = {
-        src,
-        name: `Look ${String(slot + 1).padStart(2, "0")}`,
-        note: file.name.replace(/\.[^/.]+$/, ""),
-        uploaded: true,
-      };
-      return next;
-    });
-  };
+  function reset() { setView("start"); setPhoto(null); setNote(""); setFavorites([]); setActiveId(products[0].id); setShareId(null); setMessage(""); }
 
-  const addLook = (event: ChangeEvent<HTMLInputElement>) => replaceLook(looks.length, event);
-
-  const compare = () => {
-    if (!looks[0] || !looks[1]) return;
-    setView("processing");
-    window.setTimeout(() => setView("compare"), 850);
-  };
-
-  const reset = () => {
-    if (shopperPhoto?.preview.startsWith("blob:")) URL.revokeObjectURL(shopperPhoto.preview);
-    if (productPhoto?.preview.startsWith("blob:")) URL.revokeObjectURL(productPhoto.preview);
-    setView("start");
-    setLooks([]);
-    setShopperPhoto(null);
-    setProductPhoto(null);
-    setProductUrl("");
-    setMood(null);
-    setAdvice(null);
-    setSavedId(null); setSaveMessage("");
-    setAnalysisError(null);
-    setSelected(0);
-    setZoom([1]);
-  };
-
-  const activeLook = looks[selected] ?? looks[0] ?? fallbackLook;
-
-  return (
-    <ShopLookShell>
-      <div className="pb-16">
-        <AppHeader
-          showBack={view === "detail" || view === "advice"}
-          onBack={() => setView(view === "detail" ? "compare" : "start")}
-          onReset={reset}
-          showReset={view !== "start" && view !== "processing"}
-        />
-        {view === "start" && (
-          <StartView
-            shopperPhoto={shopperPhoto}
-            productPhoto={productPhoto}
-            productUrl={productUrl}
-            mood={mood}
-            onMoodChange={setMood}
-            error={analysisError}
-            onUpload={setUpload}
-            onUrlChange={setProductUrl}
-            onAnalyse={runAnalysis}
-            onSamples={() => { setLooks(sampleLooks); setView("compare"); }}
-          />
-        )}
-        {view === "processing" && <ProcessingView shopperPhoto={shopperPhoto} productPhoto={productPhoto} />}
-        {view === "advice" && advice && shopperPhoto && (
-          <AdviceView
-            shopperPhoto={shopperPhoto}
-            productPhoto={productPhoto}
-            productUrl={productUrl}
-            advice={advice}
-            mood={mood}
-            onSave={saveLook}
-            savedId={savedId}
-            saving={saving}
-            saveMessage={saveMessage}
-            onCompare={() => setView("compare")}
-          />
-        )}
-        {view === "compare" && (
-          <CompareView
-            looks={looks}
-            selected={selected}
-            onSelect={setSelected}
-            onAdd={addLook}
-            onFull={() => setView("detail")}
-            onShare={() => setShareOpen(true)}
-            advice={advice}
-            productUrl={productUrl}
-          />
-        )}
-        {view === "detail" && activeLook && (
-          <DetailView look={activeLook} zoom={zoom} onZoom={setZoom} advice={advice} productUrl={productUrl} />
-        )}
-      </div>
-      <BottomSheet open={shareOpen} onClose={() => setShareOpen(false)} title="Share comparison">
-        <ShareSheet looks={looks} activeLook={activeLook} copied={copied} setCopied={setCopied} />
-      </BottomSheet>
-      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} onSignedIn={() => void saveLook()} />
-    </ShopLookShell>
-  );
-}
-
-async function imageToDataUrl(file: File) {
-  const image = await createImageBitmap(file);
-  const maxSide = 1200;
-  const ratio = Math.min(1, maxSide / Math.max(image.width, image.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(image.width * ratio));
-  canvas.height = Math.max(1, Math.round(image.height * ratio));
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Canvas is unavailable");
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  image.close();
-  return canvas.toDataURL("image/jpeg", 0.82);
-}
-
-function AppHeader({ showBack, showReset, onBack, onReset }: { showBack: boolean; showReset: boolean; onBack: () => void; onReset: () => void }) {
-  return (
-    <header className="grid h-16 grid-cols-[44px_minmax(0,1fr)_44px] items-center border-b border-border px-3">
-      {showBack ? <Button variant="ghost" size="icon" onClick={onBack} aria-label="Go back" className="h-11 w-11 rounded-full"><ArrowLeft /></Button> : <span />}
-      <button onClick={onReset} className="font-display text-2xl font-semibold" aria-label="Return to ShopLook start">ShopLook</button>
-      {showReset ? <Button variant="ghost" size="icon" onClick={onReset} aria-label="Start over" className="h-11 w-11 rounded-full"><RotateCcw /></Button> : <span />}
+  return <ShopLookShell>
+    <header className="flex h-16 items-center justify-between border-b border-border px-5">
+      {view === "start" ? <span className="w-10" /> : <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => setView(view === "compare" ? "try" : "start")}><ArrowLeft /></Button>}
+      <Button variant="ghost" onClick={reset} className="font-display text-2xl font-normal">ShopLook</Button>
+      {view === "start" ? <span className="w-10" /> : <Button variant="ghost" size="icon" aria-label="Start over" onClick={reset}><RotateCcw /></Button>}
     </header>
-  );
-}
 
-function StartView({ shopperPhoto, productPhoto, productUrl, mood, onMoodChange, error, onUpload, onUrlChange, onAnalyse, onSamples }: { shopperPhoto: UploadPhoto | null; productPhoto: UploadPhoto | null; productUrl: string; mood: StyleMood | null; onMoodChange: (value: StyleMood) => void; error: string | null; onUpload: (kind: UploadKind, event: ChangeEvent<HTMLInputElement>) => void; onUrlChange: (value: string) => void; onAnalyse: () => void; onSamples: () => void }) {
-  const ready = Boolean(shopperPhoto && (productPhoto || productUrl.trim()) && mood);
-  return (
-    <section className="px-5 pb-12 pt-8">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">Your personal AI shopping assistant</p>
-      <h1 className="max-w-sm font-display text-[3.35rem] leading-[0.94] font-medium">Shop your look</h1>
-      <p className="mt-4 max-w-sm text-lg leading-7 text-muted-foreground">Fashion shopping made personal and fun.</p>
-      <ol className="mt-6 space-y-3 border-y border-border py-5 text-sm leading-5">
-        {[
-          "Upload a screenshot or link of clothing or footwear you like.",
-          "Upload your photo.",
-          "Our fashion shopping AI assistant creates your look with the product.",
-          "Compare, share, and buy the best look.",
-        ].map((step, index) => (
-          <li key={step} className="grid grid-cols-[1.75rem_1fr] items-start gap-2">
-            <span className="grid size-7 place-items-center rounded-full bg-primary-soft text-xs font-semibold text-primary">{index + 1}</span>
-            <span className="pt-1 text-foreground">{step}</span>
-          </li>
-        ))}
-      </ol>
-      <fieldset className="mt-7"><legend className="text-sm font-semibold">Choose your style mood</legend><div className="mt-3 flex flex-wrap gap-2">{styleMoods.map((value) => <Button key={value} type="button" variant={mood === value ? "default" : "outline"} aria-pressed={mood === value} className="h-9 capitalize" onClick={() => onMoodChange(value)}>{value}</Button>)}</div></fieldset>
-      <div className="mt-8 grid grid-cols-2 gap-3">
-        <PhotoInput title="Your photo" detail="A clear, full outfit" photo={shopperPhoto} icon={<ImagePlus />} onChange={(event) => onUpload("shopper", event)} />
-        <PhotoInput title="Product" detail="Screenshot or photo" photo={productPhoto} icon={<Upload />} onChange={(event) => onUpload("product", event)} />
+    {view === "start" && <section className="px-5 pb-12 pt-7">
+      <p className="text-xs font-semibold uppercase tracking-widest text-primary">A new way to get dressed</p>
+      <h1 className="mt-3 font-display text-5xl leading-none">Shop your look.</h1>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">Fashion shopping made personal and fun.</p>
+      <div className="mt-7 overflow-hidden rounded-md bg-surface">
+        <Button type="button" variant="ghost" className="relative aspect-[4/4.3] h-auto w-full rounded-none p-0" onClick={() => fileRef.current?.click()} aria-label="Upload your photo">
+          {photo ? <img src={photo} alt="Your photo preview" className="size-full object-cover" /> : <div className="flex size-full flex-col items-center justify-center gap-4 bg-surface"><span className="grid size-16 place-items-center rounded-full bg-background text-primary"><ImagePlus className="size-7" /></span><span className="font-display text-2xl">Add your photo</span><span className="text-xs text-muted-foreground">Tap to choose a clear, full-body picture</span></div>}
+          {photo && <span className="absolute bottom-3 right-3 rounded bg-overlay px-3 py-1.5 text-xs text-overlay-foreground"><Check className="mr-1 inline size-3" /> Photo ready</span>}
+        </Button>
       </div>
-      <div className="my-4 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"><span className="h-px flex-1 bg-border" />or use a product link<span className="h-px flex-1 bg-border" /></div>
-      <label className="flex h-12 items-center gap-3 rounded-lg border border-input bg-background px-3 focus-within:ring-1 focus-within:ring-ring">
-        <LinkIcon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="sr-only">Product link</span>
-        <input type="url" inputMode="url" value={productUrl} onChange={(event) => onUrlChange(event.target.value)} placeholder="Paste a product link" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
-      </label>
-      {error && <div role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm leading-5 text-destructive">{error}</div>}
-      <Button className="mt-5 h-13 w-full rounded-lg text-base" disabled={!ready} onClick={onAnalyse}><Sparkles /> See the magic</Button>
-      {!ready && <p className="mt-3 text-center text-xs text-muted-foreground">Choose a mood, add your photo and a product screenshot or link</p>}
-      <Button variant="ghost" className="mt-2 h-11 w-full text-xs text-muted-foreground" onClick={onSamples}>Or explore a sample comparison</Button>
-      <div className="mt-7 flex items-start gap-3 border-t border-border pt-5 text-xs leading-5 text-muted-foreground">
-        <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-surface"><Check className="size-3" /></span>
-        <p>Your images are sent securely only when you ask for suggestions. ShopLook gives styling advice; it never alters how you look.</p>
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" className="sr-only" onChange={upload} />
+      {photo && <Button variant="link" className="mt-1 px-0" onClick={() => fileRef.current?.click()}><Upload /> Change photo</Button>}
+      <label htmlFor="style-note" className="mt-5 block text-sm font-semibold">What kind of look are you after? <span className="font-normal text-muted-foreground">Optional</span></label>
+      <div className="mt-2 flex items-start gap-3 rounded-md border border-input bg-background px-3 py-3 focus-within:ring-1 focus-within:ring-ring">
+        <MessageCircle className="mt-1 size-4 shrink-0 text-primary" />
+        <textarea id="style-note" value={note} maxLength={280} rows={2} onChange={(event) => setNote(event.target.value)} placeholder="Something for brunch, an easy work look…" className="min-w-0 flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
       </div>
-    </section>
-  );
-}
+      {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
+      <Button className="mt-5 h-12 w-full text-base" disabled={!photo} onClick={() => setView("try")}>Explore looks <ArrowRight /></Button>
+      <Button variant="ghost" className="mt-2 h-11 w-full text-xs text-muted-foreground" onClick={() => { setPhoto(null); setView("try"); }}>Explore with a sample photo</Button>
+      <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Your photo stays on this device in this demo.</p>
+    </section>}
 
-function PhotoInput({ title, detail, photo, icon, onChange }: { title: string; detail: string; photo: UploadPhoto | null; icon: ReactNode; onChange: (event: ChangeEvent<HTMLInputElement>) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  return (
-    <div className={cn("overflow-hidden rounded-lg border", photo ? "border-primary/50 bg-primary-soft" : "border-border bg-surface")}>
-      <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()} className="relative aspect-[3/4] h-auto w-full rounded-none p-0" aria-label={`Choose ${title.toLowerCase()}`}>
-        {photo ? <img src={photo.preview} alt={`${title} preview`} className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center text-muted-foreground">{icon}</span>}
-        {photo && <span className="absolute right-2 top-2 rounded-full bg-overlay px-2 py-1 text-[10px] font-semibold text-overlay-foreground">Ready</span>}
-      </Button>
-      <div className="p-3">
-        <p className="font-display text-lg">{title}</p>
-        <p className="mt-0.5 min-h-8 text-[11px] leading-4 text-muted-foreground">{photo ? photo.file.name : detail}</p>
-        <Button variant="link" className="mt-1 h-7 p-0 text-xs" onClick={() => inputRef.current?.click()}>{photo ? "Replace" : "Add photo"} <Upload /></Button>
-      </div>
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={onChange} aria-label={`Choose ${title.toLowerCase()}`} />
-    </div>
-  );
-}
+    {view === "try" && <section className="pb-12">
+      <div className="px-5 pb-4 pt-6"><p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style studio</p><h1 className="mt-1 font-display text-4xl">Try a new look</h1>{note && <p className="mt-2 border-l-2 border-primary pl-3 text-sm italic text-muted-foreground">“{note}”</p>}</div>
+      <LookImage person={person} product={active} label="Illustrative preview" />
+      <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{active.name}</h2><p className="text-xs text-muted-foreground">{active.category} · approximate overlay</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => toggleFavorite(active.id)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
+      <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Try another piece</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
+      <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{products.map((product) => <Button key={product.id} variant="ghost" aria-label={`Try ${product.name}`} aria-pressed={activeId === product.id} onClick={() => setActiveId(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span></Button>)}</div>
+      <div className="mt-5 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11" onClick={() => setShareId(active.id)}><Share2 /> Share</Button><Button asChild className="h-11"><a href={shopUrl(active)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div>
+      <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">Buy opens an India retailer search; prices and stock are set by stores.</p>
+      <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare favorites ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">This preview places an apparel image over your photo. It is not a realistic virtual try-on.</p></div>
+    </section>}
 
-function LookUpload({ slot, look, onChange }: { slot: number; look?: Look; onChange: (event: ChangeEvent<HTMLInputElement>) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const label = `Choose look ${slot + 1}`;
-  return (
-    <div className={cn("overflow-hidden rounded-lg border", look ? "border-primary/50 bg-primary-soft" : "border-border bg-surface")}>
-      <button type="button" onClick={() => inputRef.current?.click()} className="relative aspect-[3/4] w-full overflow-hidden" aria-label={label}>
-        {look ? <img src={look.src} alt={`Preview of look ${slot + 1}`} className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center"><ImagePlus className="size-7 text-muted-foreground" /></span>}
-        <span className="absolute left-2 top-2 rounded-full bg-overlay px-2 py-1 text-[10px] font-semibold text-overlay-foreground">{String(slot + 1).padStart(2, "0")}</span>
-      </button>
-      <div className="p-3">
-        <p className="font-display text-lg">{look ? look.name : `Look ${slot + 1}`}</p>
-        <Button variant="link" className="mt-1 h-7 p-0 text-xs" onClick={() => inputRef.current?.click()}>{look ? "Replace" : "Add photo"} <Upload /></Button>
-      </div>
-      <input ref={inputRef} type="file" accept="image/*" className="sr-only" onChange={onChange} aria-label={label} />
-    </div>
-  );
-}
+    {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>
+      <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} label="Preview" /><div className="flex min-h-12 items-center justify-between gap-1 py-2"><h2 className="min-w-0 truncate font-display text-lg">{product.name}</h2><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} onClick={() => toggleFavorite(product.id)}><Heart className="fill-primary text-primary" /></Button></div><div className="grid grid-cols-2 gap-1"><Button variant="outline" className="h-9 px-1 text-xs" onClick={() => setShareId(product.id)}><Share2 /> Share</Button><Button asChild className="h-9 px-1 text-xs"><a href={shopUrl(product)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div></article>)}</div>
+      {comparison.length === 0 && <p className="py-16 text-center text-sm text-muted-foreground">No favorites yet. Go back and tap a heart on a look.</p>}
+      <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">Illustrative overlays only · Buy opens retailer search results</p>
+    </section>}
 
-function ProcessingView({ shopperPhoto, productPhoto }: { shopperPhoto: UploadPhoto | null; productPhoto: UploadPhoto | null }) {
-  return (
-    <section className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center px-8 text-center">
-      <div className="relative mb-8 flex -space-x-5">
-        {[shopperPhoto, productPhoto].filter((photo): photo is UploadPhoto => Boolean(photo)).map((photo, index) => <img key={photo.preview} src={photo.preview} alt={index === 0 ? "Your outfit" : "Product reference"} className="size-24 rounded-full border-4 border-background object-cover" />)}
-        <span className="absolute -inset-2 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-      </div>
-      <p className="text-xs font-semibold uppercase tracking-widest text-primary">Finding the connection</p>
-      <h1 className="mt-3 font-display text-4xl font-medium">Styling your look</h1>
-      <p className="mt-4 max-w-xs text-sm leading-6 text-muted-foreground">Reading color, proportion, texture, and how the new piece can work with your outfit.</p>
-      <div className="mt-8 flex items-center gap-2 text-xs text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Preparing your suggestions</div>
-    </section>
-  );
-}
-
-function AdviceView({ shopperPhoto, productPhoto, productUrl, advice, mood, onCompare, onSave, savedId, saving, saveMessage }: { shopperPhoto: UploadPhoto; productPhoto: UploadPhoto | null; productUrl: string; advice: StyleAdvice; mood: StyleMood | null; onCompare: () => void; onSave: () => void; savedId: string | null; saving: boolean; saveMessage: string }) {
-  return (
-    <section className="pb-10">
-      <div className="grid h-[23rem] grid-cols-[1fr_0.72fr] gap-1 bg-surface p-1">
-        <img src={shopperPhoto.preview} alt="Your uploaded outfit" className="h-full w-full rounded-md object-cover" />
-        <div className="grid min-h-0 gap-1">
-          {productPhoto ? <img src={productPhoto.preview} alt="Product reference" className="h-full min-h-0 w-full rounded-md object-cover" /> : <div className="grid h-full place-items-center rounded-md bg-primary-soft p-4 text-center"><LinkIcon className="mb-3 size-5 text-primary" /><p className="break-words text-xs leading-5 text-muted-foreground">{productUrl}</p></div>}
-        </div>
-      </div>
-      <div className="px-5 pt-7">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Your {mood} style edit</p>
-        <h1 className="mt-2 font-display text-4xl font-medium leading-none">{advice.headline}</h1>
-        <p className="mt-4 text-sm leading-6 text-muted-foreground">{advice.summary}</p>
-
-        <div className="mt-7 border-t border-border pt-6">
-          <div className="flex items-center gap-2"><Palette className="size-4 text-primary" /><h2 className="font-display text-2xl">Colors to bring in</h2></div>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {advice.colors.map((color) => <div key={`${color.name}-${color.hex}`} className="rounded-lg border border-border bg-surface p-3"><span className="block h-10 rounded-md border border-border" style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(color.hex) ? color.hex : "var(--muted)" }} /><p className="mt-2 text-sm font-semibold">{color.name}</p><p className="mt-1 text-[11px] leading-4 text-muted-foreground">{color.use}</p></div>)}
-          </div>
-        </div>
-
-        <div className="mt-7 border-t border-border pt-6">
-          <div className="flex items-center gap-2"><Sparkles className="size-4 text-primary" /><h2 className="font-display text-2xl">Small changes, stronger look</h2></div>
-          <ol className="mt-3 divide-y divide-border">
-            {advice.adjustments.map((item, index) => <li key={`${item.title}-${index}`} className="grid grid-cols-[28px_1fr] gap-3 py-4"><span className="grid size-7 place-items-center rounded-full bg-primary-soft text-xs font-bold text-primary">{index + 1}</span><div><p className="text-sm font-semibold">{item.title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p></div></li>)}
-          </ol>
-        </div>
-        <ShopItems advice={advice} productUrl={productUrl} />
-        <Button variant="outline" className="mt-6 h-12 w-full" disabled={saving || Boolean(savedId)} onClick={onSave}>{saving ? <LoaderCircle className="animate-spin" /> : <Check />}{savedId ? "Saved privately" : "Save look"}</Button>
-        {saveMessage && <p role="status" className="mt-2 text-center text-xs text-muted-foreground">{saveMessage}</p>}
-        {savedId && <Button asChild variant="link" className="w-full"><Link to="/saved">View saved looks</Link></Button>}
-        <Button className="mt-6 h-12 w-full rounded-lg" onClick={onCompare}><Expand /> Compare this look</Button>
-        <p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">AI suggestions are a starting point—your taste is the final word.</p>
-      </div>
-    </section>
-  );
-}
-
-function ShopItems({ advice, productUrl }: { advice: StyleAdvice | null; productUrl: string }) {
-  if (!advice && !productUrl) return null;
-  return <div className="mt-7 border-t border-border pt-6"><h2 className="font-display text-2xl">Shop the details</h2><div className="mt-2 divide-y divide-border">{productUrl.startsWith("https://") && <a className="flex justify-between gap-3 py-4 text-sm" href={productUrl} target="_blank" rel="noopener noreferrer"><span>Original product<span className="block text-xs text-muted-foreground">Submitted product page</span></span><span>Shop ↗</span></a>}{advice?.shoppingItems.map((item) => <a key={item.searchTerm} href={item.destinationUrl} target="_blank" rel="noopener noreferrer" className="flex justify-between gap-3 py-4 text-sm"><span>{item.label}<span className="block text-xs text-muted-foreground">Retailer search · India</span></span><span>Shop ↗</span></a>)}</div></div>;
-}
-
-function CompareView({ looks, selected, onSelect, onAdd, onFull, onShare, advice, productUrl }: { looks: Look[]; selected: number; onSelect: (value: number) => void; onAdd: (event: ChangeEvent<HTMLInputElement>) => void; onFull: () => void; onShare: () => void; advice: StyleAdvice | null; productUrl: string }) {
-  const addRef = useRef<HTMLInputElement>(null);
-  const active = looks[selected] ?? looks[0];
-  return (
-    <section className="px-4 pb-10 pt-6">
-      <p className="text-xs font-semibold uppercase tracking-widest text-primary">Look comparison</p>
-      <div className="mt-2 flex items-end justify-between gap-4"><h1 className="font-display text-4xl font-medium leading-none">Which one<br />wins?</h1><span className="pb-1 text-xs text-muted-foreground">{looks.length}/4 looks</span></div>
-      <div className="mt-6 grid grid-cols-2 gap-2">
-        {looks.map((look, index) => (
-          <button key={`${look.src}-${index}`} onClick={() => onSelect(index)} onDoubleClick={onFull} className={cn("group relative aspect-[3/4] overflow-hidden rounded-md border-2 bg-surface", selected === index ? "border-primary" : "border-transparent")} aria-label={`Select ${look.name}`}>
-            <img src={look.src} alt={`${look.name} comparison`} className="h-full w-full object-cover" />
-            <span className="absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-overlay text-xs font-semibold text-overlay-foreground">{index + 1}</span>
-            {selected === index && <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-4" /></span>}
-            <span className="absolute inset-x-0 bottom-0 bg-image-caption p-3 text-left text-xs font-medium text-overlay-foreground">{look.name}</span>
-          </button>
-        ))}
-        {looks.length < 4 && (
-          <button onClick={() => addRef.current?.click()} className="grid aspect-[3/4] place-items-center rounded-md border border-dashed border-border bg-surface text-muted-foreground" aria-label="Add another look"><span className="text-center text-xs"><Plus className="mx-auto mb-2 size-6" />Add another look</span></button>
-        )}
-      </div>
-      <input ref={addRef} type="file" accept="image/*" className="sr-only" onChange={onAdd} aria-label="Choose another look" />
-      {active && <div className="mt-5 rounded-lg bg-primary-soft p-4"><p className="text-[10px] font-bold uppercase tracking-widest text-primary">Current pick</p><p className="mt-2 font-display text-xl leading-6">{active.name} has the strongest overall balance. Select another look to compare its details.</p><p className="mt-2 text-xs leading-5 text-muted-foreground">{active.note}</p></div>}
-      <ShopItems advice={advice} productUrl={productUrl} />
-      <div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12 rounded-lg shadow-none" onClick={onFull}><Expand /> Full size</Button><Button className="h-12 rounded-lg" onClick={onShare}><Share2 /> Share comparison</Button></div>
-    </section>
-  );
-}
-
-function DetailView({ look, zoom, onZoom, advice, productUrl }: { look: Look; zoom: number[]; onZoom: (value: number[]) => void; advice: StyleAdvice | null; productUrl: string }) {
-  return (
-    <section className="pb-9">
-      <div className="relative aspect-[4/5] overflow-hidden bg-surface"><img src={look.src} alt={`Full view of ${look.name}`} className="h-full w-full object-cover transition-transform duration-300" style={{ transform: `scale(${zoom[0] ?? 1})` }} /><span className="absolute bottom-4 left-4 rounded-full bg-overlay px-3 py-1.5 text-xs text-overlay-foreground">{look.name}</span></div>
-      <div className="px-5 pt-6"><div className="flex items-center gap-4"><ZoomOut className="size-4 text-muted-foreground" /><Slider min={1} max={2.2} step={0.1} value={zoom} onValueChange={onZoom} aria-label="Zoom image" /><ZoomIn className="size-4 text-muted-foreground" /></div><p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Zoom in to compare styling details. The original image remains unchanged.</p><ShopItems advice={advice} productUrl={productUrl} /></div>
-    </section>
-  );
-}
-
-function BottomSheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-  if (!open) return null;
-  return <div className="fixed inset-0 z-50 flex items-end justify-center bg-scrim sm:px-4" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="max-h-[86dvh] w-full max-w-[430px] overflow-y-auto rounded-t-xl bg-background p-5 shadow-sheet animate-in slide-in-from-bottom-8 duration-300"><div className="mb-5 grid grid-cols-[44px_minmax(0,1fr)_44px] items-center"><span /><h2 className="text-center font-display text-2xl font-medium">{title}</h2><Button variant="ghost" size="icon" className="h-11 w-11 rounded-full" onClick={onClose} aria-label="Close"><X /></Button></div>{children}</section></div>;
-}
-
-function ShareSheet({ looks, activeLook, copied, setCopied }: { looks: Look[]; activeLook: Look; copied: boolean; setCopied: (value: boolean) => void }) {
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(window.location.href); } catch { /* unavailable in some preview contexts */ }
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
-  };
-  const share = async () => {
-    if (!navigator.share) {
-      await copy();
-      return;
-    }
-    try {
-      await navigator.share({ title: "My ShopLook comparison", text: "Which look would you choose?", url: window.location.href });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      await copy();
-    }
-  };
-  return (
-    <div>
-      <div className="mx-auto grid aspect-[4/3] w-56 grid-cols-2 gap-1 overflow-hidden rounded-md bg-surface">{looks.slice(0, 4).map((look, index) => <img key={`${look.src}-${index}`} src={look.src} alt={`Comparison look ${index + 1}`} className="h-full min-h-0 w-full object-cover" />)}</div>
-      <p className="mx-auto mt-4 max-w-xs text-center text-sm leading-6 text-muted-foreground">Send the comparison and ask friends which complete look they prefer.</p>
-      <Button className="mt-6 h-12 w-full rounded-lg" onClick={share}><Share2 /> Share comparison</Button>
-      <div className="mt-2 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12 rounded-lg shadow-none" onClick={() => { const a = document.createElement("a"); a.href = activeLook.src; a.download = "shoplook-selection.jpg"; a.click(); }}><Download /> Save pick</Button><Button variant="outline" className="h-12 rounded-lg shadow-none" onClick={copy}><Copy /> {copied ? "Copied" : "Copy link"}</Button></div>
-    </div>
-  );
+    {shareProduct && <div role="dialog" aria-modal="true" aria-label={`Share ${shareProduct.name}`} className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setShareId(null); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Share this look</h2><Button variant="ghost" size="icon" aria-label="Close share options" onClick={() => setShareId(null)}><X /></Button></div><p className="mt-2 text-xs leading-5 text-muted-foreground">Share the preview image using your phone’s share menu, or download it to post yourself.</p><div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void shareImage(shareProduct)}><Instagram /> Instagram</Button><Button variant="outline" className="h-12" onClick={() => void shareImage(shareProduct)}><MessageCircle /> WhatsApp</Button></div><Button variant="outline" className="mt-2 h-12 w-full" onClick={() => void copyLink()}><LinkIcon /> Copy app link</Button><p className="mt-3 text-[11px] leading-4 text-muted-foreground">The copied link opens ShopLook, not your private photo. Instagram and WhatsApp need their apps or your device’s share menu.</p>{message && <p role="status" className="mt-3 text-xs text-primary">{message}</p>}</div></div>}
+  </ShopLook>;
 }

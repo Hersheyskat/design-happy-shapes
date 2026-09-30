@@ -5,23 +5,19 @@ import { ArrowLeft, ArrowRight, Check, Heart, ImagePlus, Instagram, Link as Link
 import { Button } from "@/components/ui/button";
 import { ShopLookShell } from "@/components/shoplook-shell";
 import samplePerson from "@/assets/shoplook-coral.jpg";
-import coralJacket from "@/assets/demo-coral-jacket.png";
-import blackJacket from "@/assets/demo-black-jacket.png";
-import ivoryShirt from "@/assets/demo-ivory-shirt.png";
-import sageTop from "@/assets/demo-sage-top.png";
-import denimJacket from "@/assets/demo-blue-denim.png";
-import stripedShirt from "@/assets/demo-striped-shirt.png";
+import blackBlazer from "@/assets/black-blazer.jpg.asset.json";
+import oliveCoord from "@/assets/olive-coord.webp.asset.json";
+import tealPolo from "@/assets/teal-polo.jpg.asset.json";
+import pinkBlazer from "@/assets/pink-blazer.jpg.asset.json";
 
 type Product = { id: string; name: string; category: string; image: string; search: string };
 const products: Product[] = [
-  { id: "coral", name: "Coral blazer", category: "The statement", image: coralJacket, search: "coral cropped blazer women" },
-  { id: "black", name: "Tailored blazer", category: "Everyday sharp", image: blackJacket, search: "black oversized blazer women" },
-  { id: "ivory", name: "Linen shirt", category: "Easy layers", image: ivoryShirt, search: "ivory linen shirt women" },
-  { id: "sage", name: "Sage knit", category: "Soft color", image: sageTop, search: "sage green knit top women" },
-  { id: "denim", name: "Denim jacket", category: "Off-duty", image: denimJacket, search: "cropped denim jacket women" },
-  { id: "stripe", name: "Striped shirt", category: "A classic", image: stripedShirt, search: "blue striped shirt women" },
+  { id: "black", name: "Black blazer", category: "Tailored", image: blackBlazer.url, search: "women black tailored blazer" },
+  { id: "olive", name: "Olive co-ord", category: "Relaxed set", image: oliveCoord.url, search: "women olive green co ord set" },
+  { id: "teal", name: "Teal polo", category: "Everyday", image: tealPolo.url, search: "men teal polo shirt" },
+  { id: "pink", name: "Pink blazer", category: "A pop of color", image: pinkBlazer.url, search: "women dusty pink blazer" },
 ];
-const firstProduct: Product = { id: "coral", name: "Coral blazer", category: "The statement", image: coralJacket, search: "coral cropped blazer women" };
+const firstProduct: Product = products[0] ?? { id: "black", name: "Black blazer", category: "Tailored", image: blackBlazer.url, search: "women black tailored blazer" };
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -165,7 +161,7 @@ function ShopLook() {
       <p className="mt-3 text-sm leading-6 text-muted-foreground">Fashion shopping made personal and fun.</p>
       <div className="mt-7 overflow-hidden rounded-md bg-surface">
         <Button type="button" variant="ghost" className="relative aspect-[4/4.3] h-auto w-full rounded-none p-0" onClick={() => fileRef.current?.click()} aria-label="Upload your photo">
-          {photo ? <img src={photo} alt="Your photo preview" className="size-full object-cover" /> : <div className="flex size-full flex-col items-center justify-center gap-4 bg-surface"><span className="grid size-16 place-items-center rounded-full bg-background text-primary"><ImagePlus className="size-7" /></span><span className="font-display text-2xl">Add your photo</span><span className="text-xs text-muted-foreground">Tap to choose a clear, full-body picture</span></div>}
+    {photo ? <img src={photo} alt="Your photo preview" className="size-full object-cover" /> : <div className="flex size-full flex-col items-center justify-center gap-4 bg-surface"><span className="grid size-16 place-items-center rounded-full bg-background text-primary"><ImagePlus className="size-7" /></span><span className="font-display text-2xl">Add your photo</span><span className="text-xs text-muted-foreground">Tap to choose a clear, full-body picture</span></div>}
           {photo && <span className="absolute bottom-3 right-3 rounded bg-overlay px-3 py-1.5 text-xs text-overlay-foreground"><Check className="mr-1 inline size-3" /> Photo ready</span>}
         </Button>
       </div>

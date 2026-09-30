@@ -7,28 +7,11 @@ import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
 import { ShopLookShell } from "@/components/shoplook-shell";
 import { supabase } from "@/integrations/supabase/client";
-import { saveMyLook } from "@/lib/community.functions";
+import { listCatalogProducts, saveMyLook } from "@/lib/community.functions";
+import type { CatalogProductDto } from "@/lib/community.types";
 import samplePerson from "@/assets/shoplook-coral.jpg";
-import blackBlazer from "@/assets/black-blazer.jpg.asset.json";
-import oliveCoord from "@/assets/olive-coord.webp.asset.json";
-import tealPolo from "@/assets/teal-polo.jpg.asset.json";
-import pinkBlazer from "@/assets/pink-blazer.jpg.asset.json";
-import tagasJacket from "@/assets/tagas-jacket.jpg.asset.json";
-import yellowDress from "@/assets/yellow-belted-dress.jpg.asset.json";
-import floralDress from "@/assets/black-floral-dress.jpg.asset.json";
-
-type Product = { id: string; name: string; category: string; image: string; search: string; productUrl?: string };
+type Product = CatalogProductDto;
 type PendingAction = { type: "favorite" | "save" | "share" | "buy"; productId: string };
-const products: Product[] = [
-  { id: "black", name: "Black blazer", category: "Tailored", image: blackBlazer.url, search: "women black tailored blazer" },
-  { id: "olive", name: "Olive co-ord", category: "Relaxed set", image: oliveCoord.url, search: "women olive green co ord set" },
-  { id: "teal", name: "Teal polo", category: "Everyday", image: tealPolo.url, search: "men teal polo shirt" },
-  { id: "pink", name: "Pink blazer", category: "A pop of color", image: pinkBlazer.url, search: "women dusty pink blazer" },
-  { id: "tagas-jacket", name: "TAGAS track jacket", category: "Sporty layer", image: tagasJacket.url, search: "TAGAS men regular track jacket", productUrl: "https://www.amazon.in/dp/B0GP6KT76Z" },
-  { id: "yellow-dress", name: "Yellow belted dress", category: "Sunny day", image: yellowDress.url, search: "women yellow sleeveless belted midi dress" },
-  { id: "floral-dress", name: "Black floral dress", category: "Evening floral", image: floralDress.url, search: "women black pink floral maxi shirt dress" },
-];
-const firstProduct: Product = products[0] ?? { id: "black", name: "Black blazer", category: "Tailored", image: blackBlazer.url, search: "women black tailored blazer" };
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -43,7 +26,7 @@ export const Route = createFileRoute("/")({
 });
 
 function shopUrl(product: Product) {
-  return product.productUrl ?? `https://www.amazon.in/s?k=${encodeURIComponent(product.search)}`;
+  return product.productUrl;
 }
 
 function PreviewPhoto({ src, alt }: { src: string; alt: string }) {
@@ -68,6 +51,13 @@ function LookImage({ person, product, generated, comparison = false }: { person:
 
 function ShopLook() {
   const saveLook = useServerFn(saveMyLook);
+  const loadCatalog = useServerFn(listCatalogProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [audience, setAudience] = useState<"men" | "women">("women");
+  const [catalogError, setCatalogError] = useState("");
+  useEffect(() => { void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again.")); }, [loadCatalog]);
+  const visibleProducts = products.filter((product) => product.audience === audience);
+  const firstProduct = visibleProducts[0];
   const [view, setView] = useState<"start" | "try" | "compare">("start");
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -75,7 +65,7 @@ function ShopLook() {
   const [generating, setGenerating] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState("");
   const [note, setNote] = useState("");
-  const [activeId, setActiveId] = useState(firstProduct.id);
+  const [activeId, setActiveId] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [shareId, setShareId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -130,6 +120,7 @@ function ShopLook() {
   }
 
   function useSample() {
+    if (!firstProduct) return;
     setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setError(""); setView("try");
     void generateLook(firstProduct, null);
   }
@@ -208,6 +199,8 @@ function ShopLook() {
           shopperImagePath: lookPath,
           productImagePath: productPath,
           productUrl: shopUrl(product),
+          catalogProductId: product.id,
+          styleNote: note.trim(),
           mood: "classic",
           advice: {
             headline: `${product.name} ShopLook`,
@@ -264,7 +257,7 @@ function ShopLook() {
     }
   }
 
-  function reset() { setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setNote(""); setFavorites([]); setActiveId(firstProduct.id); setShareId(null); setMessage(""); }
+  function reset() { setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setNote(""); setFavorites([]); setActiveId(""); setShareId(null); setMessage(""); }
 
   return <ShopLookShell>
     <header className="flex h-16 items-center justify-between border-b border-border px-5">
@@ -289,21 +282,23 @@ function ShopLook() {
         <MessageCircle className="mt-1 size-4 shrink-0 text-primary" />
         <textarea id="style-note" value={note} maxLength={280} rows={2} onChange={(event) => setNote(event.target.value)} placeholder="Something for brunch, an easy work look…" className="min-w-0 flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
       </div>
+      <div className="mt-5 flex gap-2" role="group" aria-label="Explore products"><Button type="button" variant={audience === "women" ? "default" : "outline"} onClick={() => { setAudience("women"); setActiveId(""); }}>Women</Button><Button type="button" variant={audience === "men" ? "default" : "outline"} onClick={() => { setAudience("men"); setActiveId(""); }}>Men</Button><span className="self-center text-xs text-muted-foreground">{visibleProducts.length} products</span></div>
+      {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
-       <Button className="mt-5 h-12 w-full text-base" disabled={!photo} onClick={() => { setView("try"); void generateLook(firstProduct); }}>Create my virtual look <Sparkles /></Button>
-        <Button variant="ghost" className="mt-2 h-14 w-full justify-start gap-3 border border-border px-3 text-sm" onClick={useSample}><img src={samplePerson} alt="" className="size-10 rounded-sm object-cover" /><span className="flex-1 text-left">Create a look with a sample photo</span><ArrowRight className="size-4" /></Button>
+       <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create my virtual look <Sparkles /></Button>
+        <Button variant="ghost" disabled={!firstProduct} className="mt-2 h-14 w-full justify-start gap-3 border border-border px-3 text-sm" onClick={useSample}><img src={samplePerson} alt="" className="size-10 rounded-sm object-cover" /><span className="flex-1 text-left">Create a look with a sample photo</span><ArrowRight className="size-4" /></Button>
         <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Creating a look sends your photo, the selected product and your style note to OpenRouter. Uploading alone keeps your photo on this device.</p>
     </section>}
 
-    {view === "try" && <section className="pb-12">
+    {view === "try" && active && <section className="pb-12">
        <div className="px-5 pb-4 pt-6"><p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style studio</p><h1 className="mt-1 font-display text-4xl">Try a new look</h1>{note && <p className="mt-2 border-l-2 border-primary pl-3 text-sm italic text-muted-foreground">“{note}”</p>}</div>
          <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your {products.find((product) => product.id === generating)?.name ?? "next"} look…</div>}</div>
-         <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{active.name}</h2>{!generated[active.id] && <p className="text-xs text-muted-foreground">{active.category}</p>}</div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
+         <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{active.name}</h2><p className="text-xs text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")} · checked {new Date(active.refreshedAt).toLocaleDateString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
           {generationError && <div className="px-5 pt-3"><p role="alert" className="text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p></div>}
       <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Try another piece</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
-         <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{products.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span></Button>)}</div>
+         <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{visibleProducts.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span><span className="w-full px-2 pb-2 text-xs text-muted-foreground">₹{product.price.toLocaleString("en-IN")}</span></Button>)}</div>
           <div className="mt-5 grid grid-cols-3 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id] || saving === active.id} onClick={() => void saveGeneratedLook(active)}>{saving === active.id ? <LoaderCircle className="animate-spin" /> : saved.includes(active.id) ? <Check /> : <Bookmark />} {saved.includes(active.id) ? "Saved" : "Save"}</Button><Button className="h-11 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
-       <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">{active.productUrl ? "Buy opens this product on Amazon India." : "Search opens similar products on Amazon India."} ShopLook has no retailer partnership; price, stock, seller and product match may vary.</p>
+       <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">Buy opens the product at {active.retailer}. Price and availability may change.</p>
          <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare favorites ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{favorites.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
     </section>}
 

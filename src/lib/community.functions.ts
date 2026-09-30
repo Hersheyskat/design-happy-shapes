@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
-import type { ProfileDto, SavedLookDto } from "./community.types";
+import type { CatalogProductDto, ProfileDto, SavedLookDto } from "./community.types";
 import { styleMoods } from "./community.types";
 
 const colorSchema = z.object({ name: z.string().max(60), hex: z.string().regex(/^#[0-9a-f]{6}$/i), use: z.string().max(240) });
@@ -14,8 +14,16 @@ const saveInput = z.object({
   shopperImagePath: z.string().min(1).max(500),
   productImagePath: z.string().min(1).max(500).nullable(),
   productUrl: z.string().url().max(2048).nullable(),
+  catalogProductId: z.string().uuid().optional(),
+  styleNote: z.string().max(280).default(""),
   mood: z.enum(styleMoods),
   advice: z.object({ headline: z.string().max(120), summary: z.string().max(600), colors: z.array(colorSchema).length(4), adjustments: z.array(adjustmentSchema).length(3), shoppingItems: z.array(shoppingItemSchema).max(4) }),
+});
+
+export const listCatalogProducts = createServerFn({ method: "GET" }).handler(async (): Promise<CatalogProductDto[]> => {
+  const result = await publicClient().from("catalog_products").select("id, audience, product_name, category, retailer, price, currency, image_path, product_url, refreshed_at").eq("is_active", true).eq("availability", "available").order("display_order");
+  if (result.error) throw new Error("The catalogue is temporarily unavailable. Please try again.");
+  return result.data.map((row) => ({ id: row.id, audience: row.audience as "men" | "women", name: row.product_name, category: row.category, retailer: row.retailer, price: row.price, currency: row.currency, image: row.image_path, productUrl: row.product_url, refreshedAt: row.refreshed_at }));
 });
 
 function publicClient() {
@@ -50,14 +58,10 @@ function readAdvice(row: { headline: string; summary: string; colors: Json; adju
 export const ensureMyProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const existing = await context.supabase.from("profiles").select("id, handle, display_name, bio, style_preferences").eq("id", context.userId).maybeSingle();
-    if (existing.data) return existing.data;
-    const seed = String(context.claims.email ?? "shopper").split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16) || "shopper";
-    const handle = `${seed.length >= 3 ? seed : "shopper"}_${context.userId.slice(0, 6)}`;
-    const displayName = String(context.claims.user_metadata?.['full_name'] ?? context.claims.email ?? "ShopLook member").slice(0, 60);
-    const created = await context.supabase.from("profiles").insert({ id: context.userId, handle, display_name: displayName }).select("id, handle, display_name, bio, style_preferences").single();
-    if (created.error) throw new Error(created.error.message);
-    return created.data;
+    await ensureProfile(context);
+    const result = await context.supabase.from("profiles").select("id, handle, display_name, bio, style_preferences").eq("id", context.userId).single();
+    if (result.error) throw new Error(result.error.message);
+    return result.data;
   });
 
 export const saveMyLook = createServerFn({ method: "POST" })
@@ -66,14 +70,17 @@ export const saveMyLook = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureProfile(context);
     if (!data.shopperImagePath.startsWith(`${context.userId}/`) || (data.productImagePath && !data.productImagePath.startsWith(`${context.userId}/`))) throw new Error("Invalid image path.");
+    const catalog = data.catalogProductId ? await context.supabase.from("catalog_products").select("id,product_name,retailer,price,currency,product_url").eq("id", data.catalogProductId).eq("is_active", true).eq("availability", "available").single() : null;
+    if (catalog?.error) throw new Error("This product is no longer available in the catalogue.");
+    const item = catalog?.data;
     const inserted = await context.supabase.from("saved_looks").insert({
       user_id: context.userId, shopper_image_path: data.shopperImagePath, product_image_path: data.productImagePath,
-      product_url: data.productUrl, mood: data.mood, headline: data.advice.headline, summary: data.advice.summary,
+      product_url: item?.product_url ?? data.productUrl, catalog_product_id: item?.id ?? null, product_name: item?.product_name ?? null, product_retailer: item?.retailer ?? null, product_price: item?.price ?? null, product_currency: item?.currency ?? null, style_note: data.styleNote, mood: data.mood, headline: data.advice.headline, summary: data.advice.summary,
       colors: data.advice.colors as Json, adjustments: data.advice.adjustments as Json,
     }).select("id").single();
     if (inserted.error) throw new Error(inserted.error.message);
     const rows = [
-      ...(data.productUrl ? [{ look_id: inserted.data.id, user_id: context.userId, label: "Original product", search_term: "Original product", destination_url: data.productUrl, source: "submitted", display_order: 0 }] : []),
+      ...((item?.product_url ?? data.productUrl) ? [{ look_id: inserted.data.id, user_id: context.userId, label: item?.product_name ?? "Original product", search_term: "Original product", destination_url: (item?.product_url ?? data.productUrl)!, source: "submitted", display_order: 0 }] : []),
       ...data.advice.shoppingItems.map((item, index) => ({ look_id: inserted.data.id, user_id: context.userId, label: item.label, search_term: item.searchTerm, destination_url: item.destinationUrl, source: "suggested", display_order: index + 1 })),
     ];
     if (rows.length) {
@@ -90,19 +97,23 @@ async function ensureProfile(context: { supabase: SupabaseClient<Database>; user
   const metadata = context.claims.user_metadata;
   const fullName = typeof metadata === "object" && metadata && "full_name" in metadata ? String(metadata.full_name) : email;
   const seed = email.split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16) || "shopper";
-  const result = await context.supabase.from("profiles").insert({ id: context.userId, handle: `${seed.length >= 3 ? seed : "shopper"}_${context.userId.slice(0, 6)}`, display_name: fullName.slice(0, 60) });
-  if (result.error) throw new Error(result.error.message);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const suffix = attempt ? `_${context.userId.slice(0, 6)}${attempt}` : `_${context.userId.slice(0, 6)}`;
+    const result = await context.supabase.from("profiles").insert({ id: context.userId, handle: `${seed.length >= 3 ? seed : "shopper"}${suffix}`.slice(0, 24), display_name: fullName.slice(0, 60) });
+    if (!result.error || result.error.code === "23505" && (await context.supabase.from("profiles").select("id").eq("id", context.userId).maybeSingle()).data) return;
+    if (result.error.code !== "23505") throw new Error(result.error.message);
+  }
+  throw new Error("Could not create a unique profile. Please try again.");
 }
 
 export const listMyLooks = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   await ensureProfile(context);
   const result = await context.supabase.from("saved_looks").select("*, saved_items(*)").eq("user_id", context.userId).order("created_at", { ascending: false });
   if (result.error) throw new Error(result.error.message);
-  return Promise.all(result.data.map(async (row) => {
-    const shopperImageUrl = await context.supabase.storage.from("shoplook-media").createSignedUrl(row.shopper_image_path, 3600);
-    const productImageUrl = row.product_image_path ? await context.supabase.storage.from("shoplook-media").createSignedUrl(row.product_image_path, 3600) : null;
-    return mapLook(row, row.saved_items, { handle: "you", display_name: "You" }, shopperImageUrl.data?.signedUrl ?? "", productImageUrl?.data?.signedUrl ?? null, 0, 0);
-  }));
+  const paths = [...new Set(result.data.flatMap((row) => [row.shopper_image_path, row.product_image_path].filter((path): path is string => Boolean(path)))];
+  const signed = paths.length ? await context.supabase.storage.from("shoplook-media").createSignedUrls(paths, 3600) : null;
+  const urls = new Map(signed?.data?.map((entry) => [entry.path, entry.signedUrl]) ?? []);
+  return result.data.map((row) => mapLook(row, row.saved_items, { handle: "you", display_name: "You" }, urls.get(row.shopper_image_path) ?? "", row.product_image_path ? urls.get(row.product_image_path) ?? null : null, 0, 0));
 });
 
 export const publishMyLook = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ id: z.string().uuid(), published: z.boolean() }).parse(input)).handler(async ({ data, context }) => {
@@ -129,7 +140,7 @@ export const listDiscoverLooks = createServerFn({ method: "GET" }).handler(async
 });
 
 function mapLook(row: Database["public"]["Tables"]["saved_looks"]["Row"], items: Database["public"]["Tables"]["saved_items"]["Row"][], profile: { handle: string; display_name: string }, shopperImageUrl: string, productImageUrl: string | null, likeCount: number, commentCount: number): SavedLookDto {
-  return { id: row.id, userId: row.user_id, handle: profile.handle, displayName: profile.display_name, shopperImageUrl, productImageUrl, productUrl: row.product_url, mood: z.enum(styleMoods).parse(row.mood), advice: readAdvice(row, items), isPublished: row.is_published, createdAt: row.created_at, items: items.map((item) => ({ id: item.id, label: item.label, searchTerm: item.search_term, destinationUrl: item.destination_url, source: item.source === "submitted" ? "submitted" : "suggested" })), likeCount, commentCount };
+  return { id: row.id, userId: row.user_id, handle: profile.handle, displayName: profile.display_name, shopperImageUrl, productImageUrl, productUrl: row.product_url, catalogProductId: row.catalog_product_id, productName: row.product_name, productRetailer: row.product_retailer, productPrice: row.product_price, productCurrency: row.product_currency, styleNote: row.style_note, mood: z.enum(styleMoods).parse(row.mood), advice: readAdvice(row, items), isPublished: row.is_published, createdAt: row.created_at, items: items.map((item) => ({ id: item.id, label: item.label, searchTerm: item.search_term, destinationUrl: item.destination_url, source: item.source === "submitted" ? "submitted" : "suggested" })), likeCount, commentCount };
 }
 
 export const getPublicProfile = createServerFn({ method: "GET" }).inputValidator((input) => z.object({ handle: z.string().min(3).max(24) }).parse(input)).handler(async ({ data }) => {

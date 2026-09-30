@@ -14,7 +14,7 @@ export function AuthDialog({ open, onOpenChange, onSignedIn }: { open: boolean; 
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
     setBusy(false);
     if (result.error) setMessage(result.error.message);
-    else if (!result.redirected) { onOpenChange(false); onSignedIn?.(); }
+    else if (!result.redirected) { onSignedIn?.(); onOpenChange(false); }
   };
 
   return (

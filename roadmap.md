@@ -13,4 +13,5 @@
 - [x] Polish the opening photo choice, distinguish the original photo and AI results, and verify the demo journey on phone and desktop.
 - [x] Generate the selected outfit directly when its catalog photo is tapped; remove the redundant try-on button and verify it.
 - [x] Bring the distant teal comparison portrait closer and label generated images ShopLook.ai.
+- [x] Keep the current generated look visible while the next product generates, switching only when its look is ready.
 - [ ] Replace Amazon India search links with exact product pages when the shop URLs are provided (blocked: product URLs not provided).

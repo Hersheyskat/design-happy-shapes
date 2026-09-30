@@ -96,9 +96,11 @@ function ShopLook() {
   }
 
   function selectProduct(id: string) {
-    setActiveId(id); setGenerationError("");
     const product = products.find((item) => item.id === id);
-    if (product && !generated[id] && !generating) void generateLook(product);
+    if (!product || generating) return;
+    setGenerationError("");
+    if (generated[id]) setActiveId(id);
+    else void generateLook(product);
   }
 
   async function generateLook(product: Product, sourceFile: File | null = photoFile) {
@@ -113,7 +115,11 @@ function ShopLook() {
       const response = await fetch("/api/generate-look", { method: "POST", body: form });
       const result = await response.json().catch(() => ({})) as { image?: string; message?: string };
       if (!response.ok || !result.image) throw new Error(result.message ?? "OpenRouter could not make this look right now.");
+      const nextImage = new Image();
+      nextImage.src = result.image;
+      await nextImage.decode();
       setGenerated((current) => ({ ...current, [product.id]: result.image as string }));
+      setActiveId(product.id);
     } catch (reason) {
       setGenerationError(reason instanceof Error ? reason.message : "Could not make an AI look right now.");
     } finally { setGenerating(null); }
@@ -187,11 +193,11 @@ function ShopLook() {
 
     {view === "try" && <section className="pb-12">
        <div className="px-5 pb-4 pt-6"><p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style studio</p><h1 className="mt-1 font-display text-4xl">Try a new look</h1>{note && <p className="mt-2 border-l-2 border-primary pl-3 text-sm italic text-muted-foreground">“{note}”</p>}</div>
-        <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating === active.id && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating a picture of you wearing {active.name}…</div>}</div>
+         <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your {products.find((product) => product.id === generating)?.name ?? "next"} look…</div>}</div>
          <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{active.name}</h2><p className="text-xs text-muted-foreground">{generated[active.id] ? "AI visualization · not a fit guarantee" : `${active.category} · showing your original photo until your look is ready`}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => toggleFavorite(active.id)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
           <div className="px-5 pt-3"><p className="text-center text-[11px] leading-4 text-muted-foreground">Tap a product below to create another look. Your photo, the product photo and style note are sent to OpenRouter. AI images may change the fit, color, fabric or product details.</p>{generationError && <p role="alert" className="mt-2 text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p>}</div>
       <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Try another piece</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
-        <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{products.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span></Button>)}</div>
+         <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{products.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span></Button>)}</div>
         <div className="mt-5 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11" disabled={!generated[active.id]} onClick={() => setShareId(active.id)}><Share2 /> Share</Button><Button asChild className="h-11"><a href={shopUrl(active)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div>
       <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">Buy opens a product search on Amazon India; exact items, prices and stock may vary.</p>
          <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare favorites ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{favorites.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>

@@ -15,4 +15,5 @@
 - [x] Bring the distant teal comparison portrait closer and label generated images ShopLook.ai.
 - [x] Keep the current generated look visible while the next product generates, switching only when its look is ready.
 - [x] Add the supplied TAGAS jacket exact Amazon page and two new dress catalogue photos with search fallbacks.
+- [x] Require Google sign-in before heart, save, share, or shopping actions, then continue the selected action after sign-in.
 - [ ] Replace remaining Amazon India search links with exact product pages when their shop URLs are provided (blocked: remaining product URLs not provided).

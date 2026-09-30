@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ArrowLeft, ArrowRight, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, MessageCircle, RotateCcw, Share2, ShoppingBag, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, RotateCcw, Share2, ShoppingBag, Sparkles, Upload, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ShopLookShell } from "@/components/shoplook-shell";
@@ -39,10 +39,9 @@ function shopUrl(product: Product) {
   return `https://www.amazon.in/s?k=${encodeURIComponent(product.search)}`;
 }
 
-function LookImage({ person, product, label }: { person: string; product: Product; label?: string }) {
+function LookImage({ person, product, label, generated }: { person: string; product: Product; label?: string; generated?: string }) {
   return <div className="relative aspect-[2/3] w-full overflow-hidden bg-surface">
-    <img src={person} alt="Your uploaded photo" className="absolute inset-0 size-full object-cover" />
-    <img src={product.image} alt={`${product.name} preview layer`} className="absolute left-[25%] top-[16%] h-[40%] w-[51%] object-fill drop-shadow-md" />
+    {generated ? <img src={generated} alt={`AI styling visualization with ${product.name}`} className="absolute inset-0 size-full object-cover" /> : <><img src={person} alt="Your uploaded photo" className="absolute inset-0 size-full object-cover" /><img src={product.image} alt={`${product.name} preview layer`} className="absolute left-[25%] top-[16%] h-[40%] w-[51%] object-fill drop-shadow-md" /></>}
     {label && <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold uppercase text-overlay-foreground">{label}</span>}
   </div>;
 }
@@ -66,6 +65,10 @@ async function makeLookImage(person: string, product: Product): Promise<File> {
 function ShopLook() {
   const [view, setView] = useState<"start" | "try" | "compare">("start");
   const [photo, setPhoto] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [generated, setGenerated] = useState<Record<string, string>>({});
+  const [generating, setGenerating] = useState<string | null>(null);
+  const [generationError, setGenerationError] = useState("");
   const [note, setNote] = useState("");
   const [activeId, setActiveId] = useState(firstProduct.id);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -86,7 +89,7 @@ function ShopLook() {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 12_000_000) {
       setError("Choose a JPG, PNG or WebP photo under 12 MB."); return;
     }
-    setError(""); setPhoto(URL.createObjectURL(file));
+    setError(""); setPhoto(URL.createObjectURL(file)); setPhotoFile(file); setGenerated({}); setGenerationError("");
     event.target.value = "";
   }
 
@@ -94,9 +97,28 @@ function ShopLook() {
     setFavorites((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
+  async function generateLook(product: Product) {
+    if (generating) return;
+    setGenerating(product.id); setGenerationError("");
+    try {
+      const source = photoFile ?? new File([await (await fetch(samplePerson)).blob()], "sample.jpg", { type: "image/jpeg" });
+      const garment = new File([await (await fetch(product.image)).blob()], `${product.id}.png`, { type: "image/png" });
+      const form = new FormData();
+      form.append("person", source); form.append("garment", garment); form.append("note", note);
+      const response = await fetch("/api/generate-look", { method: "POST", body: form });
+      const result = await response.json() as { image?: string; message?: string };
+      if (!response.ok || !result.image) throw new Error(result.message ?? "Google could not make this look right now.");
+      setGenerated((current) => ({ ...current, [product.id]: result.image as string }));
+    } catch (reason) {
+      setGenerationError(reason instanceof Error ? reason.message : "Could not make an AI look right now.");
+    } finally { setGenerating(null); }
+  }
+
   async function shareImage(product: Product) {
     try {
-      const image = await makeLookImage(person, product);
+      const image = generated[product.id]
+        ? new File([await (await fetch(generated[product.id])).blob()], `shoplook-${product.id}.png`, { type: "image/png" })
+        : await makeLookImage(person, product);
       if (navigator.canShare?.({ files: [image] })) {
         await navigator.share({ files: [image], title: `My ShopLook — ${product.name}` });
       } else {
@@ -127,7 +149,7 @@ function ShopLook() {
     }
   }
 
-  function reset() { setView("start"); setPhoto(null); setNote(""); setFavorites([]); setActiveId(firstProduct.id); setShareId(null); setMessage(""); }
+  function reset() { setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setNote(""); setFavorites([]); setActiveId(firstProduct.id); setShareId(null); setMessage(""); }
 
   return <ShopLookShell>
     <header className="flex h-16 items-center justify-between border-b border-border px-5">
@@ -155,23 +177,24 @@ function ShopLook() {
       </div>
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
       <Button className="mt-5 h-12 w-full text-base" disabled={!photo} onClick={() => setView("try")}>Explore looks <ArrowRight /></Button>
-      <Button variant="ghost" className="mt-2 h-11 w-full text-xs text-muted-foreground" onClick={() => { setPhoto(null); setView("try"); }}>Explore with a sample photo</Button>
-      <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Your photo stays on this device in this demo.</p>
+       <Button variant="ghost" className="mt-2 h-11 w-full text-xs text-muted-foreground" onClick={() => { setPhoto(null); setPhotoFile(null); setView("try"); }}>Explore with a sample photo</Button>
+       <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Your photo stays on this device unless you choose to generate an AI look.</p>
     </section>}
 
     {view === "try" && <section className="pb-12">
       <div className="px-5 pb-4 pt-6"><p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style studio</p><h1 className="mt-1 font-display text-4xl">Try a new look</h1>{note && <p className="mt-2 border-l-2 border-primary pl-3 text-sm italic text-muted-foreground">“{note}”</p>}</div>
-      <LookImage person={person} product={active} label="Illustrative preview" />
-      <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{active.name}</h2><p className="text-xs text-muted-foreground">{active.category} · approximate overlay</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => toggleFavorite(active.id)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
+       <LookImage person={person} product={active} label={generated[active.id] ? "AI visualization" : "Illustrative preview"} generated={generated[active.id]} />
+       <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{active.name}</h2><p className="text-xs text-muted-foreground">{generated[active.id] ? "AI visualization · not a fit guarantee" : `${active.category} · approximate overlay`}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => toggleFavorite(active.id)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
+       <div className="px-5 pt-4"><Button variant="outline" className="h-11 w-full" disabled={Boolean(generating)} onClick={() => void generateLook(active)}>{generating ? <LoaderCircle className="animate-spin" /> : <Sparkles />}{generating === active.id ? "Creating your AI look…" : "Generate AI look"}</Button><p className="mt-2 text-center text-[11px] leading-4 text-muted-foreground">Only when you tap this, your photo, the garment image and style note are sent to Google. AI images may change the fit, color, fabric or product details.</p>{generationError && <p role="alert" className="mt-2 text-center text-xs text-destructive">{generationError}</p>}</div>
       <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Try another piece</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
       <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{products.map((product) => <Button key={product.id} variant="ghost" aria-label={`Try ${product.name}`} aria-pressed={activeId === product.id} onClick={() => setActiveId(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span></Button>)}</div>
-      <div className="mt-5 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11" onClick={() => setShareId(active.id)}><Share2 /> Share</Button><Button asChild className="h-11"><a href={shopUrl(active)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div>
+       <div className="mt-5 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11" onClick={() => setShareId(active.id)}><Share2 /> Share</Button><Button asChild className="h-11"><a href={shopUrl(active)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div>
       <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">Buy opens a product search on Amazon India; exact items, prices and stock may vary.</p>
       <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare favorites ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">This preview places an apparel image over your photo. It is not a realistic virtual try-on.</p></div>
     </section>}
 
     {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>
-      <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} label="Preview" /><div className="flex min-h-12 items-center justify-between gap-1 py-2"><h2 className="min-w-0 truncate font-display text-lg">{product.name}</h2><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} onClick={() => toggleFavorite(product.id)}><Heart className="fill-primary text-primary" /></Button></div><div className="grid grid-cols-2 gap-1"><Button variant="outline" className="h-9 px-1 text-xs" onClick={() => setShareId(product.id)}><Share2 /> Share</Button><Button asChild className="h-9 px-1 text-xs"><a href={shopUrl(product)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div></article>)}</div>
+       <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} label={generated[product.id] ? "AI visualization" : "Illustrative preview"} /><div className="flex min-h-12 items-center justify-between gap-1 py-2"><h2 className="min-w-0 truncate font-display text-lg">{product.name}</h2><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} onClick={() => toggleFavorite(product.id)}><Heart className="fill-primary text-primary" /></Button></div><div className="grid grid-cols-2 gap-1"><Button variant="outline" className="h-9 px-1 text-xs" onClick={() => setShareId(product.id)}><Share2 /> Share</Button><Button asChild className="h-9 px-1 text-xs"><a href={shopUrl(product)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div></article>)}</div>
       {comparison.length === 0 && <p className="py-16 text-center text-sm text-muted-foreground">No favorites yet. Go back and tap a heart on a look.</p>}
       <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">Illustrative overlays only · Buy opens Amazon India search results</p>
     </section>}

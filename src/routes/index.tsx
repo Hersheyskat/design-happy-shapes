@@ -1,21 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ArrowLeft, ArrowRight, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, RotateCcw, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bookmark, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, RotateCcw, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 
+import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
 import { ShopLookShell } from "@/components/shoplook-shell";
+import { supabase } from "@/integrations/supabase/client";
+import { saveMyLook } from "@/lib/community.functions";
 import samplePerson from "@/assets/shoplook-coral.jpg";
 import blackBlazer from "@/assets/black-blazer.jpg.asset.json";
 import oliveCoord from "@/assets/olive-coord.webp.asset.json";
 import tealPolo from "@/assets/teal-polo.jpg.asset.json";
 import pinkBlazer from "@/assets/pink-blazer.jpg.asset.json";
+import tagasJacket from "@/assets/tagas-jacket.jpg.asset.json";
+import yellowDress from "@/assets/yellow-belted-dress.jpg.asset.json";
+import floralDress from "@/assets/black-floral-dress.jpg.asset.json";
 
-type Product = { id: string; name: string; category: string; image: string; search: string };
+type Product = { id: string; name: string; category: string; image: string; search: string; productUrl?: string };
 const products: Product[] = [
   { id: "black", name: "Black blazer", category: "Tailored", image: blackBlazer.url, search: "women black tailored blazer" },
   { id: "olive", name: "Olive co-ord", category: "Relaxed set", image: oliveCoord.url, search: "women olive green co ord set" },
   { id: "teal", name: "Teal polo", category: "Everyday", image: tealPolo.url, search: "men teal polo shirt" },
   { id: "pink", name: "Pink blazer", category: "A pop of color", image: pinkBlazer.url, search: "women dusty pink blazer" },
+  { id: "tagas-jacket", name: "TAGAS track jacket", category: "Sporty layer", image: tagasJacket.url, search: "TAGAS men regular track jacket", productUrl: "https://www.amazon.in/dp/B0GP6KT76Z" },
+  { id: "yellow-dress", name: "Yellow belted dress", category: "Sunny day", image: yellowDress.url, search: "women yellow sleeveless belted midi dress" },
+  { id: "floral-dress", name: "Black floral dress", category: "Evening floral", image: floralDress.url, search: "women black pink floral maxi shirt dress" },
 ];
 const firstProduct: Product = products[0] ?? { id: "black", name: "Black blazer", category: "Tailored", image: blackBlazer.url, search: "women black tailored blazer" };
 
@@ -32,7 +42,7 @@ export const Route = createFileRoute("/")({
 });
 
 function shopUrl(product: Product) {
-  return `https://www.amazon.in/s?k=${encodeURIComponent(product.search)}`;
+  return product.productUrl ?? `https://www.amazon.in/s?k=${encodeURIComponent(product.search)}`;
 }
 
 function PreviewPhoto({ src, alt }: { src: string; alt: string }) {
@@ -56,6 +66,7 @@ function LookImage({ person, product, generated, comparison = false }: { person:
 }
 
 function ShopLook() {
+  const saveLook = useServerFn(saveMyLook);
   const [view, setView] = useState<"start" | "try" | "compare">("start");
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -68,6 +79,10 @@ function ShopLook() {
   const [shareId, setShareId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [authOpen, setAuthOpen] = useState(false);
+  const [pendingSave, setPendingSave] = useState<string | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const person = photo ?? samplePerson;
   const active = products.find((product) => product.id === activeId) ?? firstProduct;
@@ -145,6 +160,59 @@ function ShopLook() {
     }
   }
 
+  async function saveGeneratedLook(product: Product) {
+    const generatedImage = generated[product.id];
+    if (!generatedImage || saving) return;
+    if (saved.includes(product.id)) { setMessage(`${product.name} is already saved.`); return; }
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData.session?.user;
+    if (!user) { setPendingSave(product.id); setAuthOpen(true); return; }
+    setSaving(product.id); setMessage("");
+    const lookPath = `${user.id}/looks/${crypto.randomUUID()}.png`;
+    const productPath = `${user.id}/products/${crypto.randomUUID()}.jpg`;
+    try {
+      const [lookBlob, productBlob] = await Promise.all([
+        fetch(generatedImage).then((response) => response.blob()),
+        fetch(product.image).then((response) => response.blob()),
+      ]);
+      const lookUpload = await supabase.storage.from("shoplook-media").upload(lookPath, lookBlob, { contentType: lookBlob.type || "image/png" });
+      if (lookUpload.error) throw lookUpload.error;
+      const productUpload = await supabase.storage.from("shoplook-media").upload(productPath, productBlob, { contentType: productBlob.type || "image/jpeg" });
+      if (productUpload.error) { await supabase.storage.from("shoplook-media").remove([lookPath]); throw productUpload.error; }
+      try {
+        await saveLook({ data: {
+          shopperImagePath: lookPath,
+          productImagePath: productPath,
+          productUrl: shopUrl(product),
+          mood: "classic",
+          advice: {
+            headline: `${product.name} ShopLook`,
+            summary: note.trim() || `A personal virtual look built around the ${product.name}.`,
+            colors: [
+              { name: "Charcoal", hex: "#303033", use: "A grounding neutral for accessories." },
+              { name: "Soft white", hex: "#f5f2ea", use: "A clean contrast for layers." },
+              { name: "Coral", hex: "#d7604f", use: "A warm accent for one small detail." },
+              { name: "Sage", hex: "#879b7a", use: "A calm complementary accent." },
+            ],
+            adjustments: [
+              { title: "Keep the product central", detail: `Let the ${product.name} remain the strongest part of the look.` },
+              { title: "Balance the silhouette", detail: "Use simple supporting pieces so the overall shape stays intentional." },
+              { title: "Finish with one accent", detail: "Choose one accessory color rather than mixing several competing details." },
+            ],
+            shoppingItems: [],
+          },
+        } });
+      } catch (saveError) {
+        await supabase.storage.from("shoplook-media").remove([lookPath, productPath]);
+        throw saveError;
+      }
+      setSaved((current) => [...current, product.id]);
+      setMessage(`${product.name} saved privately.`);
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : "Could not save this look.");
+    } finally { setSaving(null); setPendingSave(null); }
+  }
+
   async function copyLink() {
     try { await navigator.clipboard.writeText(window.location.href); setMessage("Link copied. Your private photo is not included in this link."); }
     catch {
@@ -198,17 +266,19 @@ function ShopLook() {
           <div className="px-5 pt-3"><p className="text-center text-[11px] leading-4 text-muted-foreground">Tap a product below to create another look. Your photo, the product photo and style note are sent to OpenRouter. AI images may change the fit, color, fabric or product details.</p>{generationError && <p role="alert" className="mt-2 text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p>}</div>
       <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Try another piece</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
          <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{products.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span></Button>)}</div>
-        <div className="mt-5 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11" disabled={!generated[active.id]} onClick={() => setShareId(active.id)}><Share2 /> Share</Button><Button asChild className="h-11"><a href={shopUrl(active)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div>
-      <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">Buy opens a product search on Amazon India; exact items, prices and stock may vary.</p>
+         <div className="mt-5 grid grid-cols-3 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => setShareId(active.id)}><Share2 /> Share</Button><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id] || saving === active.id} onClick={() => void saveGeneratedLook(active)}>{saving === active.id ? <LoaderCircle className="animate-spin" /> : saved.includes(active.id) ? <Check /> : <Bookmark />} {saved.includes(active.id) ? "Saved" : "Save"}</Button><Button asChild className="h-11 px-2"><a href={shopUrl(active)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</a></Button></div>
+       <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">{active.productUrl ? "Buy opens this product on Amazon India." : "Search opens similar products on Amazon India."} ShopLook has no retailer partnership; price, stock, seller and product match may vary.</p>
          <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare favorites ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{favorites.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
     </section>}
 
     {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>
-        <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} comparison /><div className="flex min-h-12 items-center justify-between gap-1 py-2"><h2 className="min-w-0 truncate font-display text-lg">{product.name}</h2><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} onClick={() => toggleFavorite(product.id)}><Heart className="fill-primary text-primary" /></Button></div><div className="grid grid-cols-2 gap-1"><Button variant="outline" className="h-9 px-1 text-xs" onClick={() => setShareId(product.id)}><Share2 /> Share</Button><Button asChild className="h-9 px-1 text-xs"><a href={shopUrl(product)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div></article>)}</div>
+        <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} comparison /><div className="flex min-h-12 items-center justify-between gap-1 py-2"><h2 className="min-w-0 truncate font-display text-lg">{product.name}</h2><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} onClick={() => toggleFavorite(product.id)}><Heart className="fill-primary text-primary" /></Button></div><div className="grid grid-cols-3 gap-1"><Button variant="outline" className="h-9 px-1 text-xs" onClick={() => setShareId(product.id)}><Share2 /> Share</Button><Button variant="outline" className="h-9 px-1 text-xs" disabled={saving === product.id} onClick={() => void saveGeneratedLook(product)}>{saved.includes(product.id) ? <Check /> : <Bookmark />} Save</Button><Button asChild className="h-9 px-1 text-xs"><a href={shopUrl(product)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> {product.productUrl ? "Buy" : "Search"}</a></Button></div></article>)}</div>
         {comparison.length === 0 && <div className="py-16 text-center"><Heart className="mx-auto mb-3 size-7 text-primary" /><p className="text-sm text-muted-foreground">Your shortlist is empty. Generate a look and heart it to compare here.</p></div>}
-        <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">AI visualizations are not fit guarantees · Buy opens Amazon India search results</p>
+         <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">AI visualizations are not fit guarantees · retailer links are for discovery · no partnership implied</p>
     </section>}
 
     {shareProduct && <div role="dialog" aria-modal="true" aria-label={`Share ${shareProduct.name}`} className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setShareId(null); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Share this look</h2><Button variant="ghost" size="icon" aria-label="Close share options" onClick={() => setShareId(null)}><X /></Button></div><p className="mt-2 text-xs leading-5 text-muted-foreground">Share the preview image using your phone’s share menu, or download it to post yourself.</p><div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void shareImage(shareProduct)}><Instagram /> Instagram</Button><Button variant="outline" className="h-12" onClick={() => void shareImage(shareProduct)}><MessageCircle /> WhatsApp</Button></div><Button variant="outline" className="mt-2 h-12 w-full" onClick={() => void copyLink()}><LinkIcon /> Copy app link</Button><p className="mt-3 text-[11px] leading-4 text-muted-foreground">The copied link opens ShopLook, not your private photo. Instagram and WhatsApp need their apps or your device’s share menu.</p>{message && <p role="status" className="mt-3 text-xs text-primary">{message}</p>}</div></div>}
+    {message && !shareProduct && <p role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto max-w-sm rounded-md bg-overlay px-4 py-3 text-center text-sm text-overlay-foreground shadow-float">{message}</p>}
+    <AuthDialog open={authOpen} onOpenChange={setAuthOpen} onSignedIn={() => { const product = products.find((item) => item.id === pendingSave); if (product) void saveGeneratedLook(product); }} />
   </ShopLookShell>;
 }

@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_generation_cooldowns: {
+        Row: {
+          client_hash: string
+          last_generated_at: string
+          updated_at: string
+        }
+        Insert: {
+          client_hash: string
+          last_generated_at?: string
+          updated_at?: string
+        }
+        Update: {
+          client_hash?: string
+          last_generated_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalog_products: {
+        Row: {
+          audience: string
+          availability: string
+          batch_id: string
+          category: string
+          created_at: string
+          currency: string
+          display_order: number
+          id: string
+          image_path: string
+          is_active: boolean
+          price: number
+          product_name: string
+          product_url: string
+          refreshed_at: string
+          retailer: string
+          source_image_url: string
+          updated_at: string
+        }
+        Insert: {
+          audience: string
+          availability?: string
+          batch_id: string
+          category: string
+          created_at?: string
+          currency?: string
+          display_order: number
+          id?: string
+          image_path: string
+          is_active?: boolean
+          price: number
+          product_name: string
+          product_url: string
+          refreshed_at?: string
+          retailer: string
+          source_image_url: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          availability?: string
+          batch_id?: string
+          category?: string
+          created_at?: string
+          currency?: string
+          display_order?: number
+          id?: string
+          image_path?: string
+          is_active?: boolean
+          price?: number
+          product_name?: string
+          product_url?: string
+          refreshed_at?: string
+          retailer?: string
+          source_image_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       community_reports: {
         Row: {
           comment_id: string | null
@@ -270,6 +348,7 @@ export type Database = {
       saved_looks: {
         Row: {
           adjustments: Json
+          catalog_product_id: string | null
           colors: Json
           created_at: string
           headline: string
@@ -277,16 +356,22 @@ export type Database = {
           is_published: boolean
           is_removed: boolean
           mood: string
+          product_currency: string | null
           product_image_path: string | null
+          product_name: string | null
+          product_price: number | null
+          product_retailer: string | null
           product_url: string | null
           published_at: string | null
           shopper_image_path: string
+          style_note: string
           summary: string
           updated_at: string
           user_id: string
         }
         Insert: {
           adjustments: Json
+          catalog_product_id?: string | null
           colors: Json
           created_at?: string
           headline: string
@@ -294,16 +379,22 @@ export type Database = {
           is_published?: boolean
           is_removed?: boolean
           mood: string
+          product_currency?: string | null
           product_image_path?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          product_retailer?: string | null
           product_url?: string | null
           published_at?: string | null
           shopper_image_path: string
+          style_note?: string
           summary: string
           updated_at?: string
           user_id: string
         }
         Update: {
           adjustments?: Json
+          catalog_product_id?: string | null
           colors?: Json
           created_at?: string
           headline?: string
@@ -311,15 +402,27 @@ export type Database = {
           is_published?: boolean
           is_removed?: boolean
           mood?: string
+          product_currency?: string | null
           product_image_path?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          product_retailer?: string | null
           product_url?: string | null
           published_at?: string | null
           shopper_image_path?: string
+          style_note?: string
           summary?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "saved_looks_catalog_product_id_fkey"
+            columns: ["catalog_product_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "saved_looks_user_id_fkey"
             columns: ["user_id"]

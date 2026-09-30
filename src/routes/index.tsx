@@ -39,7 +39,7 @@ function shopUrl(product: Product) {
   return `https://www.amazon.in/s?k=${encodeURIComponent(product.search)}`;
 }
 
-function LookImage({ person, product, label, generated }: { person: string; product: Product; label?: string; generated?: string }) {
+function LookImage({ person, product, label, generated }: { person: string; product: Product; label?: string; generated?: string | undefined }) {
   return <div className="relative aspect-[2/3] w-full overflow-hidden bg-surface">
     {generated ? <img src={generated} alt={`AI styling visualization with ${product.name}`} className="absolute inset-0 size-full object-cover" /> : <><img src={person} alt="Your uploaded photo" className="absolute inset-0 size-full object-cover" /><img src={product.image} alt={`${product.name} preview layer`} className="absolute left-[25%] top-[16%] h-[40%] w-[51%] object-fill drop-shadow-md" /></>}
     {label && <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold uppercase text-overlay-foreground">{label}</span>}
@@ -116,8 +116,9 @@ function ShopLook() {
 
   async function shareImage(product: Product) {
     try {
-      const image = generated[product.id]
-        ? new File([await (await fetch(generated[product.id])).blob()], `shoplook-${product.id}.png`, { type: "image/png" })
+      const generatedImage = generated[product.id];
+      const image = generatedImage
+        ? new File([await (await fetch(generatedImage)).blob()], `shoplook-${product.id}.png`, { type: "image/png" })
         : await makeLookImage(person, product);
       if (navigator.canShare?.({ files: [image] })) {
         await navigator.share({ files: [image], title: `My ShopLook — ${product.name}` });

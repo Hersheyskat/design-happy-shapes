@@ -37,7 +37,7 @@ function shopUrl(product: Product) {
 
 function LookImage({ person, product, label, generated }: { person: string; product: Product; label?: string; generated?: string | undefined }) {
   return <div className="relative aspect-[2/3] w-full overflow-hidden bg-surface">
-    {generated ? <img src={generated} alt={`AI styling visualization with ${product.name}`} className="absolute inset-0 size-full object-cover" /> : <div className="grid size-full grid-cols-2 gap-0.5"><img src={person} alt="Your photo" className="size-full object-cover" /><img src={product.image} alt={`${product.name} product reference" className="size-full object-cover" /></div>}
+    {generated ? <img src={generated} alt={`AI styling visualization with ${product.name}`} className="absolute inset-0 size-full object-cover" /> : <div className="grid size-full grid-cols-2 gap-0.5"><img src={person} alt="Your photo" className="size-full object-cover" /><img src={product.image} alt={`${product.name} product reference`} className="size-full object-cover" /></div>}
     {label && <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold uppercase text-overlay-foreground">{label}</span>}
   </div>;
 }

@@ -470,7 +470,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      claim_ai_generation_cooldown: {
+        Args: { _client_hash: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

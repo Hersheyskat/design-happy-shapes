@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/generate-look")({
         }
         const client = request.headers.get("cf-connecting-ip") ?? "preview";
         const last = attempts.get(client) ?? 0;
-        if (Date.now() - last < 30_000) return Response.json({ message: "Please wait a moment before making another AI look." }, { status: 429 });
+        if (Date.now() - last < 3_000) return Response.json({ message: "Please wait a moment before making another AI look." }, { status: 429 });
         attempts.set(client, Date.now());
 
         const encode = async (file: File) => Buffer.from(await file.arrayBuffer()).toString("base64");

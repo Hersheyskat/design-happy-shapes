@@ -4,8 +4,9 @@
 Make the demo feel complete without claiming a retailer partnership, and let signed-in shoppers save and revisit generated looks.
 
 ## Shopping links
-- Keep each **Buy** action linked to a relevant public Amazon India search until exact product pages or a commercial arrangement are available.
-- Open retailer results in a new tab and label the action clearly as **Search on Amazon** rather than implying the item is sold by ShopLook.
+- Add the supplied TAGAS men’s jacket as a catalogue item using the verified product-page image and a clean Amazon URL based on its product ID.
+- Add the two supplied dress photos as catalogue items; keep their **Buy** actions on relevant Amazon India searches until their matching product-page URLs are supplied.
+- Open exact retailer pages in a new tab and label them **Buy on Amazon**; label fallback destinations **Search on Amazon** so the difference is clear.
 - Add a short disclosure near shopping actions: links are for discovery, with no current retailer partnership; price, stock, seller, and product match can vary.
 - Keep each product's shopping destination separate so exact URLs can replace searches later without redesigning the experience.
 
@@ -26,4 +27,4 @@ Make the demo feel complete without claiming a retailer partnership, and let sig
 - Test signed-out Save → sign-in → automatic save completion.
 - Test signed-in save, gallery reload, opening the saved look, duplicate handling, deletion, and comparison.
 - Confirm another account cannot access a private saved image or record.
-- Check every shopping action opens its corresponding retailer search and displays the no-partnership disclosure on phone and desktop.
+- Check the jacket opens its exact Amazon page, each dress opens its corresponding search, and the no-partnership disclosure appears on phone and desktop.

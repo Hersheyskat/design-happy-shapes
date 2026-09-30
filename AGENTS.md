@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep the first-screen apparel try-on as a client-only illustrative image overlay, not a claim of realistic garment simulation, because the demo must work immediately without AI credits or uploading personal photos.

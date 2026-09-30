@@ -49,30 +49,10 @@ function LookImage({ person, product, generated }: { person: string; product: Pr
   useEffect(() => setGeneratedFailed(false), [generated]);
   const showGenerated = Boolean(generated && !generatedFailed);
   return <div className="relative aspect-[2/3] w-full overflow-hidden bg-surface">
-    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI styling visualization with ${product.name}`} onError={() => setGeneratedFailed(true)} className="size-full object-cover" /></div> : <div className="grid size-full grid-cols-2 gap-0.5"><PreviewPhoto key={person} src={person} alt="Your photo" /><PreviewPhoto key={product.image} src={product.image} alt={`${product.name} product reference`} /></div>}
-    <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold uppercase text-overlay-foreground">{showGenerated ? "AI visualization" : "Side-by-side preview"}</span>
-    {generatedFailed && <span role="alert" className="absolute right-3 top-3 rounded bg-overlay px-2 py-1 text-xs text-overlay-foreground">AI image unavailable · showing preview</span>}
+    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className="size-full object-cover" /></div> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" />}
+    <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold uppercase text-overlay-foreground">{showGenerated ? "AI virtual look" : "Your original photo"}</span>
+    {generatedFailed && <span role="alert" className="absolute right-3 top-3 rounded bg-overlay px-2 py-1 text-xs text-overlay-foreground">AI image unavailable · showing your photo</span>}
   </div>;
-}
-
-async function makeLookImage(person: string, product: Product): Promise<File> {
-  const load = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new Image(); image.onload = () => resolve(image); image.onerror = reject; image.src = src;
-  });
-  const [photo, garment] = await Promise.all([load(person), load(product.image)]);
-  const canvas = document.createElement("canvas"); canvas.width = 800; canvas.height = 1200;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Unable to prepare this image.");
-  const drawHalf = (image: HTMLImageElement, x: number) => {
-    const scale = Math.max(400 / image.width, 1200 / image.height);
-    context.save(); context.beginPath(); context.rect(x, 0, 400, 1200); context.clip();
-    context.drawImage(image, x + (400 - image.width * scale) / 2, (1200 - image.height * scale) / 2, image.width * scale, image.height * scale);
-    context.restore();
-  };
-  drawHalf(photo, 0); drawHalf(garment, 400);
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-  if (!blob) throw new Error("Unable to prepare this image.");
-  return new File([blob], `shoplook-${product.id}.png`, { type: "image/png" });
 }
 
 function ShopLook() {
@@ -112,17 +92,18 @@ function ShopLook() {
 
   function useSample() {
     setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setError(""); setView("try");
+    void generateLook(firstProduct, null);
   }
 
   function selectProduct(id: string) {
     setActiveId(id); setGenerationError("");
   }
 
-  async function generateLook(product: Product) {
+  async function generateLook(product: Product, sourceFile: File | null = photoFile) {
     if (generating) return;
     setGenerating(product.id); setGenerationError("");
     try {
-      const source = photoFile ?? new File([await (await fetch(samplePerson)).blob()], "sample.jpg", { type: "image/jpeg" });
+      const source = sourceFile ?? new File([await (await fetch(samplePerson)).blob()], "sample.jpg", { type: "image/jpeg" });
       const garmentBlob = await (await fetch(product.image)).blob();
       const garment = new File([garmentBlob], `${product.id}.${garmentBlob.type === "image/webp" ? "webp" : "jpg"}`, { type: garmentBlob.type });
       const form = new FormData();
@@ -139,9 +120,8 @@ function ShopLook() {
   async function shareImage(product: Product) {
     try {
       const generatedImage = generated[product.id];
-      const image = generatedImage
-        ? new File([await (await fetch(generatedImage)).blob()], `shoplook-${product.id}.png`, { type: "image/png" })
-        : await makeLookImage(person, product);
+      if (!generatedImage) { setMessage("Generate this look before sharing it."); return; }
+      const image = new File([await (await fetch(generatedImage)).blob()], `shoplook-${product.id}.png`, { type: "image/png" });
       if (navigator.canShare?.({ files: [image] })) {
         await navigator.share({ files: [image], title: `My ShopLook — ${product.name}` });
       } else {
@@ -198,27 +178,27 @@ function ShopLook() {
         <textarea id="style-note" value={note} maxLength={280} rows={2} onChange={(event) => setNote(event.target.value)} placeholder="Something for brunch, an easy work look…" className="min-w-0 flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
       </div>
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
-      <Button className="mt-5 h-12 w-full text-base" disabled={!photo} onClick={() => setView("try")}>See looks with my photo <ArrowRight /></Button>
-       <Button variant="ghost" className="mt-2 h-14 w-full justify-start gap-3 border border-border px-3 text-sm" onClick={useSample}><img src={samplePerson} alt="" className="size-10 rounded-sm object-cover" /><span className="flex-1 text-left">Or explore with a sample photo</span><ArrowRight className="size-4" /></Button>
-       <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Your photo stays on this device unless you choose to generate an AI look.</p>
+       <Button className="mt-5 h-12 w-full text-base" disabled={!photo} onClick={() => { setView("try"); void generateLook(firstProduct); }}>Create my virtual look <Sparkles /></Button>
+        <Button variant="ghost" className="mt-2 h-14 w-full justify-start gap-3 border border-border px-3 text-sm" onClick={useSample}><img src={samplePerson} alt="" className="size-10 rounded-sm object-cover" /><span className="flex-1 text-left">Create a look with a sample photo</span><ArrowRight className="size-4" /></Button>
+        <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Creating a look sends your photo, the selected product and your style note to OpenRouter. Uploading alone keeps your photo on this device.</p>
     </section>}
 
     {view === "try" && <section className="pb-12">
        <div className="px-5 pb-4 pt-6"><p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style studio</p><h1 className="mt-1 font-display text-4xl">Try a new look</h1>{note && <p className="mt-2 border-l-2 border-primary pl-3 text-sm italic text-muted-foreground">“{note}”</p>}</div>
-        <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating === active.id && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your AI look · preview stays available</div>}</div>
-         <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{active.name}</h2><p className="text-xs text-muted-foreground">{generated[active.id] ? "AI styling suggestion · not a fit guarantee" : `${active.category} · your photo beside the product`}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => toggleFavorite(active.id)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
-         <div className="px-5 pt-4"><Button variant="outline" className="h-11 w-full" disabled={Boolean(generating)} onClick={() => void generateLook(active)}>{generating ? <LoaderCircle className="animate-spin" /> : <Sparkles />}{generating === active.id ? "Creating your AI look…" : generated[active.id] ? "Regenerate AI look" : "Generate AI look"}</Button><p className="mt-2 text-center text-[11px] leading-4 text-muted-foreground">Only when you tap this, your photo, the product photo and style note are sent through OpenRouter to the image model. AI images may change the fit, color, fabric or product details.</p>{generationError && <p role="alert" className="mt-2 text-center text-xs text-destructive">{generationError} Your side-by-side preview is still available. Try again when ready.</p>}</div>
+        <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating === active.id && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating a picture of you wearing {active.name}…</div>}</div>
+         <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{active.name}</h2><p className="text-xs text-muted-foreground">{generated[active.id] ? "AI visualization · not a fit guarantee" : `${active.category} · showing your original photo until your look is ready`}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => toggleFavorite(active.id)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
+          <div className="px-5 pt-4"><Button variant="outline" className="h-11 w-full" disabled={Boolean(generating)} onClick={() => void generateLook(active)}>{generating ? <LoaderCircle className="animate-spin" /> : <Sparkles />}{generating === active.id ? "Creating your virtual look…" : generated[active.id] ? "Regenerate virtual look" : `Try ${active.name} on me`}</Button><p className="mt-2 text-center text-[11px] leading-4 text-muted-foreground">This sends your photo, the product photo and style note to OpenRouter. AI visualizations may change the fit, color, fabric or product details.</p>{generationError && <p role="alert" className="mt-2 text-center text-xs text-destructive">{generationError} Your original photo is still here. Try again when ready.</p>}</div>
       <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Try another piece</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
-       <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{products.map((product) => <Button key={product.id} variant="ghost" aria-label={`Try ${product.name}`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span></Button>)}</div>
-       <div className="mt-5 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11" onClick={() => setShareId(active.id)}><Share2 /> Share</Button><Button asChild className="h-11"><a href={shopUrl(active)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div>
+        <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{products.map((product) => <Button key={product.id} variant="ghost" aria-label={`Select ${product.name}`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span></Button>)}</div>
+        <div className="mt-5 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11" disabled={!generated[active.id]} onClick={() => setShareId(active.id)}><Share2 /> Share</Button><Button asChild className="h-11"><a href={shopUrl(active)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div>
       <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">Buy opens a product search on Amazon India; exact items, prices and stock may vary.</p>
-        <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare favorites ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{favorites.length === 0 ? "Heart any look to add it to your comparison. " : ""}Before AI generation, this is a side-by-side photo comparison, not a virtual try-on.</p></div>
+         <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare favorites ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{favorites.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
     </section>}
 
     {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>
         <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} /><div className="flex min-h-12 items-center justify-between gap-1 py-2"><h2 className="min-w-0 truncate font-display text-lg">{product.name}</h2><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} onClick={() => toggleFavorite(product.id)}><Heart className="fill-primary text-primary" /></Button></div><div className="grid grid-cols-2 gap-1"><Button variant="outline" className="h-9 px-1 text-xs" onClick={() => setShareId(product.id)}><Share2 /> Share</Button><Button asChild className="h-9 px-1 text-xs"><a href={shopUrl(product)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> Buy</a></Button></div></article>)}</div>
-       {comparison.length === 0 && <div className="py-16 text-center"><Heart className="mx-auto mb-3 size-7 text-primary" /><p className="text-sm text-muted-foreground">Your shortlist is empty. Heart a look to compare it here.</p></div>}
-       <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">Product references or AI visualizations · Buy opens Amazon India search results</p>
+        {comparison.length === 0 && <div className="py-16 text-center"><Heart className="mx-auto mb-3 size-7 text-primary" /><p className="text-sm text-muted-foreground">Your shortlist is empty. Generate a look and heart it to compare here.</p></div>}
+        <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">AI visualizations are not fit guarantees · Buy opens Amazon India search results</p>
     </section>}
 
     {shareProduct && <div role="dialog" aria-modal="true" aria-label={`Share ${shareProduct.name}`} className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setShareId(null); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Share this look</h2><Button variant="ghost" size="icon" aria-label="Close share options" onClick={() => setShareId(null)}><X /></Button></div><p className="mt-2 text-xs leading-5 text-muted-foreground">Share the preview image using your phone’s share menu, or download it to post yourself.</p><div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void shareImage(shareProduct)}><Instagram /> Instagram</Button><Button variant="outline" className="h-12" onClick={() => void shareImage(shareProduct)}><MessageCircle /> WhatsApp</Button></div><Button variant="outline" className="mt-2 h-12 w-full" onClick={() => void copyLink()}><LinkIcon /> Copy app link</Button><p className="mt-3 text-[11px] leading-4 text-muted-foreground">The copied link opens ShopLook, not your private photo. Instagram and WhatsApp need their apps or your device’s share menu.</p>{message && <p role="status" className="mt-3 text-xs text-primary">{message}</p>}</div></div>}

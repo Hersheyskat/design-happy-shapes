@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database, Json } from "@/integrations/supabase/types";
-import type { ProfileDto, SavedLookDto } from "./community.types";
+import type { CatalogProductDto, ProfileDto, SavedLookDto } from "./community.types";
 import { styleMoods } from "./community.types";
 
 const colorSchema = z.object({ name: z.string().max(60), hex: z.string().regex(/^#[0-9a-f]{6}$/i), use: z.string().max(240) });
@@ -14,8 +14,16 @@ const saveInput = z.object({
   shopperImagePath: z.string().min(1).max(500),
   productImagePath: z.string().min(1).max(500).nullable(),
   productUrl: z.string().url().max(2048).nullable(),
+  catalogProductId: z.string().uuid().optional(),
+  styleNote: z.string().max(280).default(""),
   mood: z.enum(styleMoods),
   advice: z.object({ headline: z.string().max(120), summary: z.string().max(600), colors: z.array(colorSchema).length(4), adjustments: z.array(adjustmentSchema).length(3), shoppingItems: z.array(shoppingItemSchema).max(4) }),
+});
+
+export const listCatalogProducts = createServerFn({ method: "GET" }).handler(async (): Promise<CatalogProductDto[]> => {
+  const result = await publicClient().from("catalog_products").select("id, audience, product_name, category, retailer, price, currency, image_path, product_url, refreshed_at").eq("is_active", true).eq("availability", "available").order("display_order");
+  if (result.error) throw new Error("The catalogue is temporarily unavailable. Please try again.");
+  return result.data.map((row) => ({ id: row.id, audience: row.audience as "men" | "women", name: row.product_name, category: row.category, retailer: row.retailer, price: row.price, currency: row.currency, image: row.image_path, productUrl: row.product_url, refreshedAt: row.refreshed_at }));
 });
 
 function publicClient() {
@@ -66,14 +74,17 @@ export const saveMyLook = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureProfile(context);
     if (!data.shopperImagePath.startsWith(`${context.userId}/`) || (data.productImagePath && !data.productImagePath.startsWith(`${context.userId}/`))) throw new Error("Invalid image path.");
+    const catalog = data.catalogProductId ? await context.supabase.from("catalog_products").select("id,product_name,retailer,price,currency,product_url").eq("id", data.catalogProductId).eq("is_active", true).eq("availability", "available").single() : null;
+    if (catalog?.error) throw new Error("This product is no longer available in the catalogue.");
+    const item = catalog?.data;
     const inserted = await context.supabase.from("saved_looks").insert({
       user_id: context.userId, shopper_image_path: data.shopperImagePath, product_image_path: data.productImagePath,
-      product_url: data.productUrl, mood: data.mood, headline: data.advice.headline, summary: data.advice.summary,
+      product_url: item?.product_url ?? data.productUrl, catalog_product_id: item?.id ?? null, product_name: item?.product_name ?? null, product_retailer: item?.retailer ?? null, product_price: item?.price ?? null, product_currency: item?.currency ?? null, style_note: data.styleNote, mood: data.mood, headline: data.advice.headline, summary: data.advice.summary,
       colors: data.advice.colors as Json, adjustments: data.advice.adjustments as Json,
     }).select("id").single();
     if (inserted.error) throw new Error(inserted.error.message);
     const rows = [
-      ...(data.productUrl ? [{ look_id: inserted.data.id, user_id: context.userId, label: "Original product", search_term: "Original product", destination_url: data.productUrl, source: "submitted", display_order: 0 }] : []),
+      ...((item?.product_url ?? data.productUrl) ? [{ look_id: inserted.data.id, user_id: context.userId, label: item?.product_name ?? "Original product", search_term: "Original product", destination_url: (item?.product_url ?? data.productUrl)!, source: "submitted", display_order: 0 }] : []),
       ...data.advice.shoppingItems.map((item, index) => ({ look_id: inserted.data.id, user_id: context.userId, label: item.label, search_term: item.searchTerm, destination_url: item.destinationUrl, source: "suggested", display_order: index + 1 })),
     ];
     if (rows.length) {

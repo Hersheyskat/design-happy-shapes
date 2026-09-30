@@ -58,14 +58,10 @@ function readAdvice(row: { headline: string; summary: string; colors: Json; adju
 export const ensureMyProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const existing = await context.supabase.from("profiles").select("id, handle, display_name, bio, style_preferences").eq("id", context.userId).maybeSingle();
-    if (existing.data) return existing.data;
-    const seed = String(context.claims.email ?? "shopper").split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16) || "shopper";
-    const handle = `${seed.length >= 3 ? seed : "shopper"}_${context.userId.slice(0, 6)}`;
-    const displayName = String(context.claims.user_metadata?.['full_name'] ?? context.claims.email ?? "ShopLook member").slice(0, 60);
-    const created = await context.supabase.from("profiles").insert({ id: context.userId, handle, display_name: displayName }).select("id, handle, display_name, bio, style_preferences").single();
-    if (created.error) throw new Error(created.error.message);
-    return created.data;
+    await ensureProfile(context);
+    const result = await context.supabase.from("profiles").select("id, handle, display_name, bio, style_preferences").eq("id", context.userId).single();
+    if (result.error) throw new Error(result.error.message);
+    return result.data;
   });
 
 export const saveMyLook = createServerFn({ method: "POST" })
@@ -101,19 +97,23 @@ async function ensureProfile(context: { supabase: SupabaseClient<Database>; user
   const metadata = context.claims.user_metadata;
   const fullName = typeof metadata === "object" && metadata && "full_name" in metadata ? String(metadata.full_name) : email;
   const seed = email.split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16) || "shopper";
-  const result = await context.supabase.from("profiles").insert({ id: context.userId, handle: `${seed.length >= 3 ? seed : "shopper"}_${context.userId.slice(0, 6)}`, display_name: fullName.slice(0, 60) });
-  if (result.error) throw new Error(result.error.message);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const suffix = attempt ? `_${context.userId.slice(0, 6)}${attempt}` : `_${context.userId.slice(0, 6)}`;
+    const result = await context.supabase.from("profiles").insert({ id: context.userId, handle: `${seed.length >= 3 ? seed : "shopper"}${suffix}`.slice(0, 24), display_name: fullName.slice(0, 60) });
+    if (!result.error || result.error.code === "23505" && (await context.supabase.from("profiles").select("id").eq("id", context.userId).maybeSingle()).data) return;
+    if (result.error.code !== "23505") throw new Error(result.error.message);
+  }
+  throw new Error("Could not create a unique profile. Please try again.");
 }
 
 export const listMyLooks = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   await ensureProfile(context);
   const result = await context.supabase.from("saved_looks").select("*, saved_items(*)").eq("user_id", context.userId).order("created_at", { ascending: false });
   if (result.error) throw new Error(result.error.message);
-  return Promise.all(result.data.map(async (row) => {
-    const shopperImageUrl = await context.supabase.storage.from("shoplook-media").createSignedUrl(row.shopper_image_path, 3600);
-    const productImageUrl = row.product_image_path ? await context.supabase.storage.from("shoplook-media").createSignedUrl(row.product_image_path, 3600) : null;
-    return mapLook(row, row.saved_items, { handle: "you", display_name: "You" }, shopperImageUrl.data?.signedUrl ?? "", productImageUrl?.data?.signedUrl ?? null, 0, 0);
-  }));
+  const paths = [...new Set(result.data.flatMap((row) => [row.shopper_image_path, row.product_image_path].filter((path): path is string => Boolean(path)))];
+  const signed = paths.length ? await context.supabase.storage.from("shoplook-media").createSignedUrls(paths, 3600) : null;
+  const urls = new Map(signed?.data?.map((entry) => [entry.path, entry.signedUrl]) ?? []);
+  return result.data.map((row) => mapLook(row, row.saved_items, { handle: "you", display_name: "You" }, urls.get(row.shopper_image_path) ?? "", row.product_image_path ? urls.get(row.product_image_path) ?? null : null, 0, 0));
 });
 
 export const publishMyLook = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ id: z.string().uuid(), published: z.boolean() }).parse(input)).handler(async ({ data, context }) => {

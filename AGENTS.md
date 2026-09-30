@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Keep the first-screen apparel try-on as a client-only illustrative image overlay, not a claim of realistic garment simulation, because the demo must work immediately without AI credits or uploading personal photos.
+- Keep Google-powered image generation opt-in and server-side; shopper photos only leave the browser after explicit action, while the illustrative demo stays available without a credential.

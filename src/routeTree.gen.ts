@@ -17,6 +17,7 @@ import { Route as SavedRouteImport } from './routes/saved'
 import { Route as ApiGenerateLookRouteImport } from './routes/api/generate-look'
 import { Route as LookLookIdRouteImport } from './routes/look.$lookId'
 import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
+import { Route as SavedLookIdRouteImport } from './routes/saved.$lookId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,26 +59,33 @@ const ProfileHandleRoute = ProfileHandleRouteImport.update({
   path: '/$handle',
   getParentRoute: () => ProfileRoute,
 } as any)
+const SavedLookIdRoute = SavedLookIdRouteImport.update({
+  id: '/$lookId',
+  path: '/$lookId',
+  getParentRoute: () => SavedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/discover': typeof DiscoverRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
-  '/saved': typeof SavedRoute
+  '/saved': typeof SavedRouteWithChildren
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
+  '/saved/$lookId': typeof SavedLookIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/discover': typeof DiscoverRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
-  '/saved': typeof SavedRoute
+  '/saved': typeof SavedRouteWithChildren
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
+  '/saved/$lookId': typeof SavedLookIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -85,10 +93,11 @@ export interface FileRoutesById {
   '/discover': typeof DiscoverRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
-  '/saved': typeof SavedRoute
+  '/saved': typeof SavedRouteWithChildren
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
+  '/saved/$lookId': typeof SavedLookIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/api/generate-look'
     | '/look/$lookId'
     | '/profile/$handle'
+    | '/saved/$lookId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/api/generate-look'
     | '/look/$lookId'
     | '/profile/$handle'
+    | '/saved/$lookId'
   id:
     | '__root__'
     | '/'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/api/generate-look'
     | '/look/$lookId'
     | '/profile/$handle'
+    | '/saved/$lookId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -128,7 +140,7 @@ export interface RootRouteChildren {
   DiscoverRoute: typeof DiscoverRoute
   ProfileRoute: typeof ProfileRouteWithChildren
   ProgressRoute: typeof ProgressRoute
-  SavedRoute: typeof SavedRoute
+  SavedRoute: typeof SavedRouteWithChildren
   ApiGenerateLookRoute: typeof ApiGenerateLookRoute
   LookLookIdRoute: typeof LookLookIdRoute
 }
@@ -191,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileHandleRouteImport
       parentRoute: typeof ProfileRoute
     }
+    '/saved/$lookId': {
+      id: '/saved/$lookId'
+      path: '/$lookId'
+      fullPath: '/saved/$lookId'
+      preLoaderRoute: typeof SavedLookIdRouteImport
+      parentRoute: typeof SavedRoute
+    }
   }
 }
 
@@ -205,12 +224,22 @@ const ProfileRouteChildren: ProfileRouteChildren = {
 const ProfileRouteWithChildren =
   ProfileRoute._addFileChildren(ProfileRouteChildren)
 
+interface SavedRouteChildren {
+  SavedLookIdRoute: typeof SavedLookIdRoute
+}
+
+const SavedRouteChildren: SavedRouteChildren = {
+  SavedLookIdRoute: SavedLookIdRoute,
+}
+
+const SavedRouteWithChildren = SavedRoute._addFileChildren(SavedRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DiscoverRoute: DiscoverRoute,
   ProfileRoute: ProfileRouteWithChildren,
   ProgressRoute: ProgressRoute,
-  SavedRoute: SavedRoute,
+  SavedRoute: SavedRouteWithChildren,
   ApiGenerateLookRoute: ApiGenerateLookRoute,
   LookLookIdRoute: LookLookIdRoute,
 }

@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listMyLooks } from "@/lib/community.functions";
 import type { SavedLookDto } from "@/lib/community.types";
 
-export const Route = createFileRoute("/saved/$lookId")({
+export const Route = createFileRoute("/saved-look/$lookId")({
   head: () => ({ meta: [
     { title: "Saved look — ShopLook" },
     { name: "description", content: "Revisit a private saved ShopLook and its styling notes." },

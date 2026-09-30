@@ -7,6 +7,6 @@
 - [ ] Verify the signed-in saved-history journey (blocked: no test account and AI credits unavailable).
 - [x] Add opt-in Google AI image generation without removing the instant illustrative preview.
 - [ ] Connect a Google AI Studio key and verify generation (blocked: saved key is for OpenRouter, not Google).
-- [ ] Remove the misnamed OpenRouter credential from the Google key slot to prevent accidental use.
+- [x] Remove the misnamed OpenRouter credential from the Google key slot to prevent accidental use.
 - [x] Offer the secure key-entry form again; do not accept a pasted key in chat.
 - [ ] Replace illustrative garments and search links with licensed catalog photos and exact product URLs (blocked: photos, permission, and URLs not provided).

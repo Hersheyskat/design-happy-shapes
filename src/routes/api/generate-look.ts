@@ -46,10 +46,11 @@ export const Route = createFileRoute("/api/generate-look")({
             return Response.json({ message: result?.error?.message ?? fallback }, { status: upstream.status });
           }
           const image = result?.output_image;
-          if (!image?.data || !["image/png", "image/jpeg", "image/webp"].includes(image.mime_type ?? "")) {
+          const mime = image?.mime_type ?? "image/png";
+          if (!image?.data || !["image/png", "image/jpeg", "image/webp"].includes(mime)) {
             return Response.json({ message: result?.error?.message ?? "Google did not return a finished image. Your preview is still available." }, { status: 502 });
           }
-          return Response.json({ image: `data:${image.mime_type};base64,${image.data}` }, { headers: { "Cache-Control": "no-store" } });
+          return Response.json({ image: `data:${mime};base64,${image.data}` }, { headers: { "Cache-Control": "no-store" } });
         } catch {
           return Response.json({ message: "Could not reach Google right now. Your preview is still available." }, { status: 502 });
         }

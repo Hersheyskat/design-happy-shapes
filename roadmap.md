@@ -12,4 +12,5 @@
 - [x] Add the four supplied product photos to the catalog; exact purchase links remain blocked until provided.
 - [x] Polish the opening photo choice, distinguish the original photo and AI results, and verify the demo journey on phone and desktop.
 - [x] Generate the selected outfit directly when its catalog photo is tapped; remove the redundant try-on button and verify it.
+- [ ] Match comparison portrait framing across looks and label generated images ShopLook.ai.
 - [ ] Replace Amazon India search links with exact product pages when the shop URLs are provided (blocked: product URLs not provided).

@@ -21,6 +21,7 @@ const products: Product[] = [
   { id: "denim", name: "Denim jacket", category: "Off-duty", image: denimJacket, search: "cropped denim jacket women" },
   { id: "stripe", name: "Striped shirt", category: "A classic", image: stripedShirt, search: "blue striped shirt women" },
 ];
+const firstProduct: Product = { id: "coral", name: "Coral blazer", category: "The statement", image: coralJacket, search: "coral cropped blazer women" };
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -66,14 +67,14 @@ function ShopLook() {
   const [view, setView] = useState<"start" | "try" | "compare">("start");
   const [photo, setPhoto] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [activeId, setActiveId] = useState(products[0].id);
+  const [activeId, setActiveId] = useState(firstProduct.id);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [shareId, setShareId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const person = photo ?? samplePerson;
-  const active = products.find((product) => product.id === activeId) ?? products[0];
+  const active = products.find((product) => product.id === activeId) ?? firstProduct;
   const shareProduct = products.find((product) => product.id === shareId);
   const comparison = favorites.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product));
 
@@ -116,7 +117,7 @@ function ShopLook() {
     catch { setMessage("Copying is unavailable in this browser."); }
   }
 
-  function reset() { setView("start"); setPhoto(null); setNote(""); setFavorites([]); setActiveId(products[0].id); setShareId(null); setMessage(""); }
+  function reset() { setView("start"); setPhoto(null); setNote(""); setFavorites([]); setActiveId(firstProduct.id); setShareId(null); setMessage(""); }
 
   return <ShopLookShell>
     <header className="flex h-16 items-center justify-between border-b border-border px-5">

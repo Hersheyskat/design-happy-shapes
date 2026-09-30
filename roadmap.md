@@ -4,7 +4,7 @@
 - [x] Show a generated virtual look after explicit request, with tappable catalog choices and the original photo as a pending/failure fallback.
 - [x] Add favorites, scrollable four-up comparison, share handoffs, and retailer shopping search.
 - [x] Verify the demo journey on mobile and desktop.
-- [ ] Verify creating and revisiting a saved look (Save action and sign-in continuation added; end-to-end verification pending).
+- [x] Add Save look, sign-in continuation, private storage, gallery reload, and a saved-look detail view; verify saving and revisiting while signed in.
 - [x] Rewire opt-in image generation through OpenRouter, retaining the original photo while a look is pending or unavailable.
 - [x] Securely connect an OpenRouter key and verify generation on desktop; phone flow also checked.
 - [x] Remove the misnamed OpenRouter credential from the Google key slot to prevent accidental use.

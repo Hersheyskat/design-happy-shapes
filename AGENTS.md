@@ -9,5 +9,5 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Keep the first-screen apparel try-on as a client-only illustrative image overlay, not a claim of realistic garment simulation, because the demo must work immediately without AI credits or uploading personal photos.
-- Keep Google-powered image generation opt-in and server-side; shopper photos only leave the browser after explicit action, while the illustrative demo stays available without a credential.
+- Keep the first-screen comparison client-only: show the shopper beside the supplied product photo until opt-in AI generation; model-worn product photos cannot be truthfully overlaid as garment cutouts.
+- Keep OpenRouter-powered image generation opt-in and server-side; shopper photos only leave the browser after explicit action, while the illustrative demo stays available without a credential.

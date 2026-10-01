@@ -49,11 +49,23 @@ function isErrorLike(value: unknown): value is Error {
   return value instanceof Error;
 }
 
+// A browser refresh or navigation can close the HTTP socket mid-request. Node
+// emits this as "Error: aborted" from abortIncoming, but it is not an app error.
+export function isDisconnectedRequest(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < CAUSE_DEPTH_LIMIT && current instanceof Error; depth++) {
+    if (current.message === "aborted" && current.stack?.includes("abortIncoming (node:_http_server:")) return true;
+    current = current.cause;
+  }
+  return false;
+}
+
 // Wrap console.error so errors logged by any layer — including h3's internal
 // unhandled-error logging, which this file cannot hook directly — are both
 // recorded for consumeLastCapturedError and expanded before serialization.
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]) => {
+  if (args.some(isDisconnectedRequest)) return;
   const expanded = args.map((arg) => {
     if (!isErrorLike(arg)) return arg;
     record(arg);
@@ -63,9 +75,12 @@ console.error = (...args: unknown[]) => {
 };
 
 if (typeof globalThis.addEventListener === "function") {
-  globalThis.addEventListener("error", (event) => record((event as ErrorEvent).error ?? event));
+  globalThis.addEventListener("error", (event) => {
+    const error = (event as ErrorEvent).error ?? event;
+    if (!isDisconnectedRequest(error)) record(error);
+  });
   globalThis.addEventListener("unhandledrejection", (event) =>
-    record((event as PromiseRejectionEvent).reason),
+    !isDisconnectedRequest((event as PromiseRejectionEvent).reason) && record((event as PromiseRejectionEvent).reason),
   );
 }
 

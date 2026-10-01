@@ -1,5 +1,6 @@
 # Roadmap
 
+- [x] Identify the exact source location of the OpenRouter image-generation model and prompt.
 - [x] Make the virtual-look prompt replace the whole existing garment with the selected catalogue item; send its name with the product photo.
 - [x] Reserve a substantial, uncropped look-photo area; keep alternatives compact and page scrollable, with tap-to-expand zoom.
 - [x] Keep archived look photos uncropped in details, thumbnails, and progress comparison.

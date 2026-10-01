@@ -25,3 +25,4 @@
 - [ ] Replace the demo catalogue with 10 men's and 10 women's verified apparel from CK, Louis Philippe, USPA, Levi's, SHEIN, and Moomaya using Apify (blocked: Apify returned “Monthly usage hard limit exceeded”; owner chose to increase the Apify limit). Preserve the existing batch until a complete replacement is validated.
 - [x] Simplify the sharing pop-up copy and remove the extra link and app explanation.
 - [x] Move the Women/Men selector above the style prompt and rename the main action to “Create my ShopLook.”
+- [x] Rename the main action to “Create your Shop.”

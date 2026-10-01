@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { ArrowLeft, ArrowRight, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
@@ -62,6 +62,7 @@ function LookImage({ person, product, generated, comparison = false }: { person:
 
 function ShopLook() {
   const { product: selectedProductId } = Route.useSearch();
+  const navigate = useNavigate();
   const loadCatalog = useServerFn(listCatalogProducts);
   const [products, setProducts] = useState<Product[]>([]);
   const [audience, setAudience] = useState<"men" | "women" | null>(null);
@@ -98,8 +99,9 @@ function ShopLook() {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 8_000_000) {
       setError("Choose a JPG, PNG or WebP photo under 8 MB."); event.target.value = ""; return;
     }
+    void navigate({ to: "/", search: {}, replace: true });
     setAudience(null);
-    setError(""); setPhoto(URL.createObjectURL(file)); setPhotoFile(file); setGenerated({}); setGenerationError("");
+    setError(""); setPhoto(URL.createObjectURL(file)); setPhotoFile(file); setGenerated({}); setGenerationError(""); setActiveId(""); setFavorites([]);
     event.target.value = "";
   }
 
@@ -231,7 +233,6 @@ function ShopLook() {
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" className="sr-only" onChange={upload} />
         <h2 className="mt-5 text-sm font-semibold">Choose one</h2>
         <div className="mt-2 flex gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Woman</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Man</Button>{audience && <span className="self-center text-xs text-muted-foreground">{visibleProducts.length} products</span>}</div>
-       {selectedProduct && selectedProduct.audience === audience && <div className="mt-4 flex items-center gap-3 rounded-md border border-primary bg-surface p-2"><img src={selectedProduct.image} alt="" className="size-14 rounded-sm object-contain" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase text-primary">First in your Look queue</p><p className="truncate text-sm font-medium">{selectedProduct.name}</p></div></div>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
         <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your ShopLook <Sparkles /></Button>

@@ -68,6 +68,7 @@ function ShopLook() {
   const loadCatalog = useServerFn(listCatalogProducts);
   const [products, setProducts] = useState<Product[]>([]);
   const [audience, setAudience] = useState<"men" | "women" | null>(null);
+  const [mode, setMode] = useState<"styling" | "tryon">("styling");
   const [catalogError, setCatalogError] = useState("");
   useEffect(() => { void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again.")); }, [loadCatalog]);
   const selectedProduct = products.find((product) => product.id === selectedProductId);
@@ -236,8 +237,13 @@ function ShopLook() {
         </Button>
       </div>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" className="sr-only" onChange={upload} />
-        <h2 className="mt-5 text-sm font-semibold">Choose one</h2>
-        <div className="mt-2 flex gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Woman</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Man</Button>{audience && <span className="self-center text-xs text-muted-foreground">{visibleProducts.length} products</span>}</div>
+        <div className="mt-5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2">
+          <h2 className="text-sm font-semibold">Choose one</h2>
+          <h2 className="text-right text-sm font-semibold">Mode</h2>
+          <div className="flex flex-wrap items-start gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Woman</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Man</Button></div>
+          <div className="flex justify-end gap-1.5" role="group" aria-label="Mode"><Button type="button" className="h-10 px-2.5 text-xs sm:px-3 sm:text-sm" aria-pressed={mode === "styling"} variant={mode === "styling" ? "default" : "outline"} onClick={() => setMode("styling")}>Styling</Button><Button type="button" className="h-10 px-2.5 text-xs sm:px-3 sm:text-sm" aria-pressed={mode === "tryon"} variant={mode === "tryon" ? "default" : "outline"} onClick={() => setMode("tryon")}>Tryon</Button></div>
+        </div>
+        {audience && <span className="mt-2 block text-xs text-muted-foreground">{visibleProducts.length} products</span>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
         <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your ShopLook <Sparkles /></Button>

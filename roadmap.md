@@ -22,3 +22,4 @@
 - [ ] Connect and publish shoplook.ai (blocked: domain-owner access and DNS confirmation are required).
 - [x] Offer an opt-in OpenRouter photo-based catalogue suggestion, without inferring gender identity or sending the photo on upload.
 - [x] Rename Create/Discover to Look/Shop, add the searchable catalogue grid, and send selected products to the front of the Look queue.
+- [ ] Replace the demo catalogue with 10 men's and 10 women's verified apparel from CK, Louis Philippe, USPA, Levi's, SHEIN, and Moomaya using Apify; preserve the existing batch if a complete replacement cannot be validated.

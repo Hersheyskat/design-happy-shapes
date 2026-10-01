@@ -242,7 +242,7 @@ function ShopLook() {
     </header>
 
     {view === "start" && <section className="px-5 pb-12 pt-7">
-      <p className="text-xs font-semibold uppercase tracking-widest text-primary">A new way to get dressed</p>
+      <p className="text-xs font-semibold uppercase tracking-widest text-primary">The AI-Powered Shopping Agent</p>
       <h1 className="mt-3 font-display text-5xl leading-none">Shop your look.</h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">Fashion shopping made personal and fun.</p>
       <div className="mt-6 overflow-hidden rounded-md bg-surface">

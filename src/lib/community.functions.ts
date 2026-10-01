@@ -110,7 +110,7 @@ export const listMyLooks = createServerFn({ method: "GET" }).middleware([require
   await ensureProfile(context);
   const result = await context.supabase.from("saved_looks").select("*, saved_items(*)").eq("user_id", context.userId).order("created_at", { ascending: false });
   if (result.error) throw new Error(result.error.message);
-  const paths = [...new Set(result.data.flatMap((row) => [row.shopper_image_path, row.product_image_path].filter((path): path is string => Boolean(path)))];
+  const paths = [...new Set(result.data.flatMap((row) => [row.shopper_image_path, row.product_image_path].filter((path): path is string => Boolean(path))))];
   const signed = paths.length ? await context.supabase.storage.from("shoplook-media").createSignedUrls(paths, 3600) : null;
   const urls = new Map(signed?.data?.map((entry) => [entry.path, entry.signedUrl]) ?? []);
   return result.data.map((row) => mapLook(row, row.saved_items, { handle: "you", display_name: "You" }, urls.get(row.shopper_image_path) ?? "", row.product_image_path ? urls.get(row.product_image_path) ?? null : null, 0, 0));

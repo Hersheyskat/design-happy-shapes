@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Reserve a substantial, uncropped look-photo area; keep alternatives compact and page scrollable, with tap-to-expand zoom.
+- [x] Keep archived look photos uncropped in details, thumbnails, and progress comparison.
+- [ ] Validate saved-look details with a real signed-in archive entry (blocked: signed-in test account has no saved entries).
 - [x] Open look photos in a larger pop-up when tapped.
 - [x] Show icon-only Share and Buy actions beneath each shortlist look.
 - [x] Restore the look photo's intended frame height so it does not collapse when tappable.

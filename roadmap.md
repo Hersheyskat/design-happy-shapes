@@ -23,3 +23,4 @@
 - [x] Offer an opt-in OpenRouter photo-based catalogue suggestion, without inferring gender identity or sending the photo on upload.
 - [x] Rename Create/Discover to Look/Shop, add the searchable catalogue grid, and send selected products to the front of the Look queue.
 - [ ] Replace the demo catalogue with 10 men's and 10 women's verified apparel from CK, Louis Philippe, USPA, Levi's, SHEIN, and Moomaya using Apify (blocked: Apify returned “Monthly usage hard limit exceeded”; owner chose to increase the Apify limit). Preserve the existing batch until a complete replacement is validated.
+- [x] Simplify the sharing pop-up copy and remove the extra link and app explanation.

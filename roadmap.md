@@ -1,5 +1,9 @@
 # Roadmap
 
+- [x] Open look photos in a larger pop-up when tapped.
+- [x] Show icon-only Share and Buy actions beneath each shortlist look.
+- [x] Restore the look photo's intended frame height so it does not collapse when tappable.
+
 - [x] Add the demo-first photo upload and optional style note.
 - [x] Show a generated virtual look after explicit request, with tappable catalog choices and the original photo as a pending/failure fallback.
 - [x] Add favorites, scrollable four-up comparison, share handoffs, and retailer shopping search.

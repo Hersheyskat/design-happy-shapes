@@ -21,3 +21,4 @@
 - [x] Move AI generation throttling into the database so it works across app instances.
 - [ ] Connect and publish shoplook.ai (blocked: domain-owner access and DNS confirmation are required).
 - [x] Offer an opt-in OpenRouter photo-based catalogue suggestion, without inferring gender identity or sending the photo on upload.
+- [x] Rename Create/Discover to Look/Shop, add the searchable catalogue grid, and send selected products to the front of the Look queue.

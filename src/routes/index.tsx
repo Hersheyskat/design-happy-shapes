@@ -53,7 +53,10 @@ function ShopLook() {
   const saveLook = useServerFn(saveMyLook);
   const loadCatalog = useServerFn(listCatalogProducts);
   const [products, setProducts] = useState<Product[]>([]);
-  const [audience, setAudience] = useState<"men" | "women">("women");
+  const [audience, setAudience] = useState<"men" | "women" | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestionMessage, setSuggestionMessage] = useState("");
+  const suggestionRequest = useRef(0);
   const [catalogError, setCatalogError] = useState("");
   useEffect(() => { void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again.")); }, [loadCatalog]);
   const visibleProducts = products.filter((product) => product.audience === audience);
@@ -88,8 +91,32 @@ function ShopLook() {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 8_000_000) {
       setError("Choose a JPG, PNG or WebP photo under 8 MB."); event.target.value = ""; return;
     }
+    suggestionRequest.current += 1;
+    setAudience(null); setSuggesting(false); setSuggestionMessage("");
     setError(""); setPhoto(URL.createObjectURL(file)); setPhotoFile(file); setGenerated({}); setGenerationError("");
     event.target.value = "";
+  }
+
+  async function suggestCatalog() {
+    if (!photoFile || suggesting) return;
+    const requestId = ++suggestionRequest.current;
+    setSuggesting(true); setSuggestionMessage("");
+    try {
+      const form = new FormData(); form.append("photo", photoFile);
+      const response = await fetch("/api/suggest-catalog", { method: "POST", body: form });
+      const result = await response.json().catch(() => ({})) as { audience?: "men" | "women" | null; message?: string };
+      if (requestId !== suggestionRequest.current) return;
+      if (!response.ok) throw new Error(result.message ?? "Photo suggestions are unavailable. Choose a catalogue below.");
+      if (result.audience === "men" || result.audience === "women") { setAudience(result.audience); setActiveId(""); }
+      else setSuggestionMessage("No clear match from this photo. Choose the catalogue you prefer.");
+    } catch (reason) {
+      if (requestId === suggestionRequest.current) setSuggestionMessage(reason instanceof Error ? reason.message : "Choose a catalogue below.");
+    } finally { if (requestId === suggestionRequest.current) setSuggesting(false); }
+  }
+
+  function chooseAudience(next: "men" | "women") {
+    suggestionRequest.current += 1;
+    setSuggesting(false); setSuggestionMessage(""); setAudience(next); setActiveId("");
   }
 
   function applyFavorite(id: string) {
@@ -257,7 +284,7 @@ function ShopLook() {
     }
   }
 
-  function reset() { setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setNote(""); setFavorites([]); setActiveId(""); setShareId(null); setMessage(""); }
+  function reset() { suggestionRequest.current += 1; setSuggesting(false); setSuggestionMessage(""); setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setNote(""); setFavorites([]); setActiveId(""); setShareId(null); setMessage(""); }
 
   return <ShopLookShell>
     <header className="flex h-16 items-center justify-between border-b border-border px-5">
@@ -277,17 +304,19 @@ function ShopLook() {
         </Button>
       </div>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" className="sr-only" onChange={upload} />
+      {photoFile && <Button type="button" variant="outline" className="mt-3 w-full" disabled={suggesting} onClick={() => void suggestCatalog()}>{suggesting ? <LoaderCircle className="animate-spin" /> : <Sparkles />} {suggesting ? "Finding your catalogue…" : "Suggest a catalogue from my outfit"}</Button>}
       <label htmlFor="style-note" className="mt-5 block text-sm font-semibold">What kind of look are you after? <span className="font-normal text-muted-foreground">Optional</span></label>
       <div className="mt-2 flex items-start gap-3 rounded-md border border-input bg-background px-3 py-3 focus-within:ring-1 focus-within:ring-ring">
         <MessageCircle className="mt-1 size-4 shrink-0 text-primary" />
         <textarea id="style-note" value={note} maxLength={280} rows={2} onChange={(event) => setNote(event.target.value)} placeholder="Something for brunch, an easy work look…" className="min-w-0 flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
       </div>
-      <div className="mt-5 flex gap-2" role="group" aria-label="Explore products"><Button type="button" variant={audience === "women" ? "default" : "outline"} onClick={() => { setAudience("women"); setActiveId(""); }}>Women</Button><Button type="button" variant={audience === "men" ? "default" : "outline"} onClick={() => { setAudience("men"); setActiveId(""); }}>Men</Button><span className="self-center text-xs text-muted-foreground">{visibleProducts.length} products</span></div>
+      <div className="mt-5 flex gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Women</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Men</Button><span className="self-center text-xs text-muted-foreground">{audience ? `${visibleProducts.length} products` : "Choose a catalogue"}</span></div>
+      {suggestionMessage && <p role="status" className="mt-3 text-xs text-muted-foreground">{suggestionMessage}</p>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create my virtual look <Sparkles /></Button>
         <Button variant="ghost" disabled={!firstProduct} className="mt-2 h-14 w-full justify-start gap-3 border border-border px-3 text-sm" onClick={useSample}><img src={samplePerson} alt="" className="size-10 rounded-sm object-cover" /><span className="flex-1 text-left">Create a look with a sample photo</span><ArrowRight className="size-4" /></Button>
-        <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Creating a look sends your photo, the selected product and your style note to OpenRouter. Uploading alone keeps your photo on this device.</p>
+        <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Your photo stays on this device until you request a catalogue suggestion or create a look. You can change catalogues anytime.</p>
     </section>}
 
     {view === "try" && active && <section className="pb-12">

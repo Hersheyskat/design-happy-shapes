@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ArrowLeft, ArrowRight, Bookmark, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, RotateCcw, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, RotateCcw, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -8,11 +8,11 @@ import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
 import { ShopLookShell } from "@/components/shoplook-shell";
 import { supabase } from "@/integrations/supabase/client";
-import { listCatalogProducts, saveMyLook } from "@/lib/community.functions";
+import { listCatalogProducts } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 import samplePerson from "@/assets/shoplook-coral.jpg";
 type Product = CatalogProductDto;
-type PendingAction = { type: "favorite" | "save" | "share" | "buy"; productId: string };
+type PendingAction = { type: "favorite" | "share" | "buy"; productId: string };
 
 export const Route = createFileRoute("/")({
   validateSearch: (search) => z.object({ product: z.string().optional(), mood: z.string().optional() }).catch({}).parse(search),
@@ -63,7 +63,6 @@ function LookImage({ person, product, generated, comparison = false }: { person:
 
 function ShopLook() {
   const { product: selectedProductId } = Route.useSearch();
-  const saveLook = useServerFn(saveMyLook);
   const loadCatalog = useServerFn(listCatalogProducts);
   const [products, setProducts] = useState<Product[]>([]);
   const [audience, setAudience] = useState<"men" | "women" | null>(null);
@@ -90,8 +89,6 @@ function ShopLook() {
   const [error, setError] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
-  const [saving, setSaving] = useState<string | null>(null);
-  const [saved, setSaved] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const person = photo ?? samplePerson;
   const active = products.find((product) => product.id === activeId) ?? firstProduct;
@@ -217,61 +214,6 @@ function ShopLook() {
     }
   }
 
-  async function saveGeneratedLook(product: Product) {
-    const generatedImage = generated[product.id];
-    if (!generatedImage || saving) return;
-    if (saved.includes(product.id)) { setMessage(`${product.name} is already saved.`); return; }
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-    if (!user) { setPendingAction({ type: "save", productId: product.id }); setAuthOpen(true); return; }
-    setSaving(product.id); setMessage("");
-    const lookPath = `${user.id}/looks/${crypto.randomUUID()}.png`;
-    const productPath = `${user.id}/products/${crypto.randomUUID()}.jpg`;
-    try {
-      const [lookBlob, productBlob] = await Promise.all([
-        fetch(generatedImage).then((response) => response.blob()),
-        fetch(product.image).then((response) => response.blob()),
-      ]);
-      const lookUpload = await supabase.storage.from("shoplook-media").upload(lookPath, lookBlob, { contentType: lookBlob.type || "image/png" });
-      if (lookUpload.error) throw lookUpload.error;
-      const productUpload = await supabase.storage.from("shoplook-media").upload(productPath, productBlob, { contentType: productBlob.type || "image/jpeg" });
-      if (productUpload.error) { await supabase.storage.from("shoplook-media").remove([lookPath]); throw productUpload.error; }
-      try {
-        await saveLook({ data: {
-          shopperImagePath: lookPath,
-          productImagePath: productPath,
-          productUrl: shopUrl(product),
-          catalogProductId: product.id,
-          styleNote: note.trim(),
-          mood: "classic",
-          advice: {
-            headline: `${product.name} ShopLook`,
-            summary: note.trim() || `A personal virtual look built around the ${product.name}.`,
-            colors: [
-              { name: "Charcoal", hex: "#303033", use: "A grounding neutral for accessories." },
-              { name: "Soft white", hex: "#f5f2ea", use: "A clean contrast for layers." },
-              { name: "Coral", hex: "#d7604f", use: "A warm accent for one small detail." },
-              { name: "Sage", hex: "#879b7a", use: "A calm complementary accent." },
-            ],
-            adjustments: [
-              { title: "Keep the product central", detail: `Let the ${product.name} remain the strongest part of the look.` },
-              { title: "Balance the silhouette", detail: "Use simple supporting pieces so the overall shape stays intentional." },
-              { title: "Finish with one accent", detail: "Choose one accessory color rather than mixing several competing details." },
-            ],
-            shoppingItems: [],
-          },
-        } });
-      } catch (saveError) {
-        await supabase.storage.from("shoplook-media").remove([lookPath, productPath]);
-        throw saveError;
-      }
-      setSaved((current) => [...current, product.id]);
-      setMessage(`${product.name} saved privately.`);
-    } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : "Could not save this look.");
-    } finally { setSaving(null); setPendingAction(null); }
-  }
-
   function continuePendingAction() {
     const action = pendingAction;
     if (!action) return;
@@ -279,7 +221,6 @@ function ShopLook() {
     if (!product) { setPendingAction(null); return; }
     setPendingAction(null);
     if (action.type === "favorite") applyFavorite(product.id);
-    if (action.type === "save") void saveGeneratedLook(product);
     if (action.type === "share") setShareId(product.id);
     if (action.type === "buy") window.open(shopUrl(product), "_blank", "noopener,noreferrer");
   }
@@ -342,13 +283,13 @@ function ShopLook() {
           {generationError && <div className="px-5 pt-3"><p role="alert" className="text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p></div>}
       <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Try another piece</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
           <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{visibleProducts.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 pt-2 text-xs font-medium">{productBrand(product.name)}</span><span className="block w-full truncate px-2 text-[11px] text-muted-foreground">{product.retailer}</span><span className="w-full px-2 pb-2 text-xs">₹{product.price.toLocaleString("en-IN")}</span></Button>)}</div>
-          <div className="mt-5 grid grid-cols-3 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id] || saving === active.id} onClick={() => void saveGeneratedLook(active)}>{saving === active.id ? <LoaderCircle className="animate-spin" /> : saved.includes(active.id) ? <Check /> : <Bookmark />} {saved.includes(active.id) ? "Saved" : "Save"}</Button><Button className="h-11 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
+          <div className="mt-5 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button className="h-11 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
        <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">Buy opens the product at {active.retailer}. Price and availability may change.</p>
          <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare favorites ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{favorites.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
     </section>}
 
     {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>
-         <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} comparison /><div className="flex min-h-14 items-center justify-between gap-1 py-2"><div className="min-w-0"><h2 className="truncate font-display text-lg">{productBrand(product.name)}</h2><p className="truncate text-xs text-muted-foreground">{product.retailer} · ₹{product.price.toLocaleString("en-IN")}</p></div><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} onClick={() => void favoriteLook(product)}><Heart className="fill-primary text-primary" /></Button></div><div className="grid grid-cols-3 gap-1"><Button variant="outline" className="h-9 px-1 text-xs" onClick={() => void openShare(product)}><Share2 /> Share</Button><Button variant="outline" className="h-9 px-1 text-xs" disabled={saving === product.id} onClick={() => void saveGeneratedLook(product)}>{saved.includes(product.id) ? <Check /> : <Bookmark />} Save</Button><Button className="h-9 px-1 text-xs" onClick={() => void openShop(product)}><ShoppingBag /> {product.productUrl ? "Buy" : "Search"}</Button></div></article>)}</div>
+         <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} comparison /><div className="flex min-h-14 items-center justify-between gap-1 py-2"><div className="min-w-0"><h2 className="truncate font-display text-lg">{productBrand(product.name)}</h2><p className="truncate text-xs text-muted-foreground">{product.retailer} · ₹{product.price.toLocaleString("en-IN")}</p></div><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} onClick={() => void favoriteLook(product)}><Heart className="fill-primary text-primary" /></Button></div><div className="grid grid-cols-2 gap-1"><Button variant="outline" className="h-9 px-1 text-xs" onClick={() => void openShare(product)}><Share2 /> Share</Button><Button className="h-9 px-1 text-xs" onClick={() => void openShop(product)}><ShoppingBag /> {product.productUrl ? "Buy" : "Search"}</Button></div></article>)}</div>
         {comparison.length === 0 && <div className="py-16 text-center"><Heart className="mx-auto mb-3 size-7 text-primary" /><p className="text-sm text-muted-foreground">Your shortlist is empty. Generate a look and heart it to compare here.</p></div>}
          <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">AI visualizations are not fit guarantees · retailer links are for discovery · no partnership implied</p>
     </section>}

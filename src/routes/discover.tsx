@@ -11,7 +11,7 @@ export const Route = createFileRoute("/discover")({
   head: () => ({ meta: [{ title: "Discover looks — ShopLook" }, { name: "description", content: "Discover published looks and reusable products from the ShopLook community." }, { property: "og:title", content: "Discover looks — ShopLook" }, { property: "og:description", content: "Discover published looks and reusable products from the ShopLook community." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }),
   loader: async ({ context }) => { await context.queryClient.ensureQueryData(discoverQuery); },
   component: DiscoverPage,
-  errorComponent: ({ error }) => <PageMessage title="Discover is unavailable" message={error.message} />,
+  errorComponent: ({ error }) => <PageMessage title="Discover is unavailable" message={error instanceof Error ? error.message : "Please try again."} />,
   notFoundComponent: () => <PageMessage title="Nothing here yet" message="Published looks will appear here." />,
 });
 

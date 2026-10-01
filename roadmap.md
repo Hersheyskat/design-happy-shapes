@@ -20,3 +20,4 @@
 - [x] Add Google and passwordless email-code sign-in, private saved looks, product snapshots, and reliable profile creation.
 - [x] Move AI generation throttling into the database so it works across app instances.
 - [ ] Connect and publish shoplook.ai (blocked: domain-owner access and DNS confirmation are required).
+- [x] Offer an opt-in OpenRouter photo-based catalogue suggestion, without inferring gender identity or sending the photo on upload.

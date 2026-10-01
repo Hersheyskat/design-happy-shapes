@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ArrowLeft, ArrowRight, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, Share2, ShoppingBag, Sparkles, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -44,7 +44,7 @@ function productBrand(name: string) {
 function PreviewPhoto({ src, alt }: { src: string; alt: string }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
-  return <div className="relative size-full overflow-hidden bg-surface">
+  return <div className="absolute inset-0 overflow-hidden bg-surface">
     {!loaded && !failed && <div className="absolute inset-0 grid place-items-center" role="status" aria-label="Loading image"><LoaderCircle className="size-5 animate-spin text-muted-foreground" /></div>}
     {failed ? <div className="flex size-full items-center justify-center px-3 text-center text-xs text-muted-foreground">Image unavailable</div> : <img src={src} alt={alt} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} className={`size-full object-contain ${loaded ? "" : "invisible"}`} />}
   </div>;
@@ -55,8 +55,8 @@ function LookImage({ person, product, generated, comparison = false, onOpen }: {
   useEffect(() => setGeneratedFailed(false), [generated]);
   const showGenerated = Boolean(generated && !generatedFailed);
   const imageAlt = showGenerated ? `AI visualization of you wearing ${product.name}` : "Your original photo — no outfit has been generated yet";
-  return <Button type="button" variant="ghost" aria-label={`Enlarge ${showGenerated ? product.name + " look" : "your original photo"}`} onClick={() => onOpen(showGenerated && generated ? generated : person, imageAlt)} className={`relative block h-auto w-full overflow-hidden rounded-none bg-surface p-0 hover:bg-surface focus-visible:ring-inset ${comparison ? "aspect-[2/3]" : "aspect-[4/3] sm:aspect-[2/3]"}`}>
-    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className="size-full object-contain" /></div> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" />}
+  return <Button type="button" variant="ghost" aria-label={`Enlarge ${showGenerated ? product.name + " look" : "your original photo"}`} onClick={() => onOpen(showGenerated && generated ? generated : person, imageAlt)} className={`relative block w-full shrink-0 overflow-hidden rounded-none bg-surface p-0 hover:bg-surface focus-visible:ring-inset ${comparison ? "aspect-[2/3] h-auto" : "h-[50dvh] min-h-[320px] max-h-[540px]"}`}>
+    {showGenerated && generated ? <img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className="absolute inset-0 size-full object-contain" /> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" />}
     {!showGenerated && <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold text-overlay-foreground">Your original photo</span>}
     {generatedFailed && <span role="alert" className="absolute right-3 top-3 rounded bg-overlay px-2 py-1 text-xs text-overlay-foreground">AI image unavailable · showing your photo</span>}
   </Button>;
@@ -84,6 +84,7 @@ function ShopLook() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [shareId, setShareId] = useState<string | null>(null);
   const [enlargedPhoto, setEnlargedPhoto] = useState<{ src: string; alt: string } | null>(null);
+  const [photoZoom, setPhotoZoom] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
@@ -242,13 +243,13 @@ function ShopLook() {
         <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your ShopLook <Sparkles /></Button>
     </section>}
 
-    {view === "try" && active && <section className="pb-12">
+     {view === "try" && active && <section className="min-w-0 overflow-x-clip pb-12">
          <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} onOpen={(src, alt) => setEnlargedPhoto({ src, alt })} />{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your {products.find((product) => product.id === generating)?.name ?? "next"} look…</div>}</div>
-          <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{productBrand(active.name)}</h2><p className="text-sm text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
+           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="truncate font-display text-xl">{productBrand(active.name)}</h2><p className="truncate text-sm text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-10 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
           {generationError && <div className="px-5 pt-3"><p role="alert" className="text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p></div>}
-      <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Create more looks</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
-          <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{visibleProducts.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 pt-2 text-xs font-medium">{productBrand(product.name)}</span><span className="block w-full truncate px-2 text-[11px] text-muted-foreground">{product.retailer}</span><span className="w-full px-2 pb-2 text-xs">₹{product.price.toLocaleString("en-IN")}</span></Button>)}</div>
-          <div className="mt-5 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button className="h-11 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
+           <div className="mt-3 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-10 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button className="h-10 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
+       <div className="mt-5 flex items-center justify-between px-5"><h2 className="font-display text-xl">Create more looks</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
+           <div className="mt-2 flex max-w-full snap-x gap-2 overflow-x-auto px-5 pb-3 scrollbar-thin">{visibleProducts.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-24 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 pt-2 text-xs font-medium">{productBrand(product.name)}</span><span className="block w-full truncate px-2 text-[11px] text-muted-foreground">{product.retailer}</span><span className="w-full px-2 pb-2 text-xs">₹{product.price.toLocaleString("en-IN")}</span></Button>)}</div>
        <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">Buy opens the product at {active.retailer}. Price and availability may change.</p>
          <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare my looks ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{favorites.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
     </section>}
@@ -259,10 +260,10 @@ function ShopLook() {
          <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">AI visualizations are not fit guarantees · retailer links are for discovery · no partnership implied</p>
     </section>}
 
-    <Dialog open={Boolean(enlargedPhoto)} onOpenChange={(open) => { if (!open) setEnlargedPhoto(null); }}>
+    <Dialog open={Boolean(enlargedPhoto)} onOpenChange={(open) => { if (!open) { setEnlargedPhoto(null); setPhotoZoom(false); } }}>
       <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl gap-0 rounded-md border-border p-3 pt-12 sm:p-4 sm:pt-12">
         <DialogTitle className="sr-only">{enlargedPhoto?.alt ?? "Photo"}</DialogTitle>
-        {enlargedPhoto && <img src={enlargedPhoto.src} alt={enlargedPhoto.alt} className="mx-auto max-h-[calc(100dvh-6rem)] w-full object-contain" />}
+        {enlargedPhoto && <><Button type="button" variant="outline" size="icon" className="absolute left-3 top-2 size-9" aria-label={photoZoom ? "Zoom out" : "Zoom in"} onClick={() => setPhotoZoom((current) => !current)}>{photoZoom ? <ZoomOut /> : <ZoomIn />}</Button><div className="max-h-[calc(100dvh-6rem)] overflow-auto"><img src={enlargedPhoto.src} alt={enlargedPhoto.alt} className={photoZoom ? "h-auto w-[200%] max-w-none" : "mx-auto max-h-[calc(100dvh-6rem)] w-full object-contain"} /></div></>}
       </DialogContent>
     </Dialog>
     {shareProduct && <div role="dialog" aria-modal="true" aria-label={`Share ${shareProduct.name}`} className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setShareId(null); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Share your look</h2><Button variant="ghost" size="icon" aria-label="Close share options" onClick={() => setShareId(null)}><X /></Button></div><p className="mt-2 text-xs leading-5 text-muted-foreground">Share your look with friends on Insta and WhatsApp for feedback &amp; fun :)</p><div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void shareImage(shareProduct)}><Instagram /> Instagram</Button><Button variant="outline" className="h-12" onClick={() => void shareImage(shareProduct)}><MessageCircle /> WhatsApp</Button></div><Button variant="outline" className="mt-2 h-12 w-full" onClick={() => void copyLink()}><LinkIcon /> Copy app link</Button>{message && <p role="status" className="mt-3 text-xs text-primary">{message}</p>}</div></div>}

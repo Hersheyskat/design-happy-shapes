@@ -50,11 +50,14 @@ function isErrorLike(value: unknown): value is Error {
 }
 
 // A browser refresh or navigation can close the HTTP socket mid-request. Node
-// emits this as "Error: aborted" from abortIncoming, but it is not an app error.
+// reports abortIncoming, while srvx reports an AbortError from its response-close
+// handler. Neither represents an application failure.
 export function isDisconnectedRequest(error: unknown): boolean {
   let current: unknown = error;
   for (let depth = 0; depth < CAUSE_DEPTH_LIMIT && current instanceof Error; depth++) {
     if (current.message === "aborted" && current.stack?.includes("abortIncoming (node:_http_server:")) return true;
+    if (current.name === "AbortError" && current.message === "This operation was aborted" &&
+      current.stack?.includes("srvx/dist/adapters/node.mjs:") && current.stack.includes("ServerResponse.<anonymous>")) return true;
     current = current.cause;
   }
   return false;

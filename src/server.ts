@@ -54,7 +54,7 @@ export default {
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response, request);
     } catch (error) {
-      if (isDisconnectedRequest(error) && request.signal.aborted) {
+      if (isDisconnectedRequest(error)) {
         return new Response(null, { status: 499 });
       }
       console.error(error);

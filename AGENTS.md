@@ -16,4 +16,4 @@
 - Serve the manually refreshed 10-men/10-women catalogue from the database with ShopLook-hosted product images and exact retailer URLs, preserving the last good batch if an import fails.
 - Suggest a catalogue from visible clothing style only after a separate opt-in action; never infer gender identity or transmit a shopper photo on selection, and always allow manual override.
 - Pass Shop-to-Look product selections by catalogue product ID in the Look page URL, so the handoff survives refresh without storing shopper data.
-- Treat Node abortIncoming and srvx response-close AbortError stacks as disconnected requests, not app crashes, while preserving reporting for unrelated server errors.
+- Treat Node abortIncoming and srvx response-close AbortError stacks as disconnected requests; preserve their cause when h3 converts them to opaque 500s so the response wrapper can return 499 without false crash reporting, while preserving unrelated server errors.

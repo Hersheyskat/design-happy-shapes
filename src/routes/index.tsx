@@ -239,7 +239,7 @@ function ShopLook() {
        {selectedProduct && selectedProduct.audience === audience && <div className="mt-4 flex items-center gap-3 rounded-md border border-primary bg-surface p-2"><img src={selectedProduct.image} alt="" className="size-14 rounded-sm object-contain" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase text-primary">First in your Look queue</p><p className="truncate text-sm font-medium">{selectedProduct.name}</p></div></div>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
-        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your Shop <Sparkles /></Button>
+        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your ShopLook <Sparkles /></Button>
     </section>}
 
     {view === "try" && active && <section className="pb-12">

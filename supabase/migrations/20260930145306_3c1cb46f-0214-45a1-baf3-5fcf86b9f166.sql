@@ -1,1 +1,0 @@
-GRANT SELECT ON public.catalog_products TO anon, authenticated; GRANT ALL ON public.catalog_products TO service_role; GRANT ALL ON public.ai_generation_cooldowns TO service_role;

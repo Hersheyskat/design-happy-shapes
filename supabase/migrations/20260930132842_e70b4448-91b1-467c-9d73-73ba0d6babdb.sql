@@ -1,1 +1,0 @@
-CREATE POLICY "ai_generation_cooldowns_service_only" ON public.ai_generation_cooldowns FOR ALL TO service_role USING (true) WITH CHECK (true);

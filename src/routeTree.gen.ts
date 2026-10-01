@@ -15,7 +15,6 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as ApiGenerateLookRouteImport } from './routes/api/generate-look'
-import { Route as ApiSuggestCatalogRouteImport } from './routes/api/suggest-catalog'
 import { Route as LookLookIdRouteImport } from './routes/look.$lookId'
 import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
 import { Route as SavedLookLookIdRouteImport } from './routes/saved-look.$lookId'
@@ -50,11 +49,6 @@ const ApiGenerateLookRoute = ApiGenerateLookRouteImport.update({
   path: '/api/generate-look',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSuggestCatalogRoute = ApiSuggestCatalogRouteImport.update({
-  id: '/api/suggest-catalog',
-  path: '/api/suggest-catalog',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LookLookIdRoute = LookLookIdRouteImport.update({
   id: '/look/$lookId',
   path: '/look/$lookId',
@@ -78,7 +72,6 @@ export interface FileRoutesByFullPath {
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
-  '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/saved-look/$lookId': typeof SavedLookLookIdRoute
@@ -90,7 +83,6 @@ export interface FileRoutesByTo {
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
-  '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/saved-look/$lookId': typeof SavedLookLookIdRoute
@@ -103,7 +95,6 @@ export interface FileRoutesById {
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
-  '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/saved-look/$lookId': typeof SavedLookLookIdRoute
@@ -117,7 +108,6 @@ export interface FileRouteTypes {
     | '/progress'
     | '/saved'
     | '/api/generate-look'
-    | '/api/suggest-catalog'
     | '/look/$lookId'
     | '/profile/$handle'
     | '/saved-look/$lookId'
@@ -129,7 +119,6 @@ export interface FileRouteTypes {
     | '/progress'
     | '/saved'
     | '/api/generate-look'
-    | '/api/suggest-catalog'
     | '/look/$lookId'
     | '/profile/$handle'
     | '/saved-look/$lookId'
@@ -141,7 +130,6 @@ export interface FileRouteTypes {
     | '/progress'
     | '/saved'
     | '/api/generate-look'
-    | '/api/suggest-catalog'
     | '/look/$lookId'
     | '/profile/$handle'
     | '/saved-look/$lookId'
@@ -154,7 +142,6 @@ export interface RootRouteChildren {
   ProgressRoute: typeof ProgressRoute
   SavedRoute: typeof SavedRoute
   ApiGenerateLookRoute: typeof ApiGenerateLookRoute
-  ApiSuggestCatalogRoute: typeof ApiSuggestCatalogRoute
   LookLookIdRoute: typeof LookLookIdRoute
   SavedLookLookIdRoute: typeof SavedLookLookIdRoute
 }
@@ -203,13 +190,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGenerateLookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/suggest-catalog': {
-      id: '/api/suggest-catalog'
-      path: '/api/suggest-catalog'
-      fullPath: '/api/suggest-catalog'
-      preLoaderRoute: typeof ApiSuggestCatalogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/look/$lookId': {
       id: '/look/$lookId'
       path: '/look/$lookId'
@@ -252,7 +232,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProgressRoute: ProgressRoute,
   SavedRoute: SavedRoute,
   ApiGenerateLookRoute: ApiGenerateLookRoute,
-  ApiSuggestCatalogRoute: ApiSuggestCatalogRoute,
   LookLookIdRoute: LookLookIdRoute,
   SavedLookLookIdRoute: SavedLookLookIdRoute,
 }

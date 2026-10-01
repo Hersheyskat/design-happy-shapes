@@ -14,3 +14,4 @@
 - Save generated looks only after an explicit action, using authenticated private storage and the existing owner-scoped saved-look records, because shopper images must remain private by default.
 - Gate heart, save, share, and retailer actions through Google or passwordless email-code authentication and resume the selected action after sign-in, so profiles consistently own every engagement.
 - Serve the manually refreshed 10-men/10-women catalogue from the database with ShopLook-hosted product images and exact retailer URLs, preserving the last good batch if an import fails.
+- Suggest a catalogue from visible clothing style only after a separate opt-in action; never infer gender identity or transmit a shopper photo on selection, and always allow manual override.

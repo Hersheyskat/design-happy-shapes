@@ -9,8 +9,8 @@ export function ShopLookShell({ children }: { children: ReactNode }) {
         {children}
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto grid h-16 max-w-[430px] grid-cols-4 border-x border-t border-border bg-background/95 backdrop-blur" aria-label="ShopLook navigation">
-        <NavItem to="/" label="Create" icon={<Home />} />
-        <NavItem to="/discover" label="Discover" icon={<Compass />} />
+        <NavItem to="/" label="Look" icon={<Home />} />
+        <NavItem to="/discover" label="Shop" icon={<Compass />} />
         <NavItem to="/saved" label="Saved" icon={<Heart />} />
         <NavItem to="/profile" label="Profile" icon={<UserRound />} />
       </nav>

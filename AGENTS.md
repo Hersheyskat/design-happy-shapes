@@ -17,3 +17,4 @@
 - Suggest a catalogue from visible clothing style only after a separate opt-in action; never infer gender identity or transmit a shopper photo on selection, and always allow manual override.
 - Pass Shop-to-Look product selections by catalogue product ID in the Look page URL, so the handoff survives refresh without storing shopper data.
 - Treat Node abortIncoming and srvx response-close AbortError stacks as disconnected requests; preserve their cause when h3 converts them to opaque 500s so the response wrapper can return 499 without false crash reporting, while preserving unrelated server errors.
+- Reserve explicit, non-shrinking image frames for primary and saved look photos and use contained image sizing; percentage-sized children inside auto-height controls collapse or crop when their image dimensions change.

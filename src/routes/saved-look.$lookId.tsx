@@ -6,6 +6,7 @@ import { ArrowLeft, LoaderCircle, ShoppingBag, ZoomIn, ZoomOut } from "lucide-re
 import { AuthDialog } from "@/components/auth-dialog";
 import { ShopLookShell } from "@/components/shoplook-shell";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { listMyLooks } from "@/lib/community.functions";
 import type { SavedLookDto } from "@/lib/community.types";
@@ -52,7 +53,7 @@ function SavedLookPage() {
         <h2 className="mt-7 font-display text-2xl">Styling notes</h2><ul className="mt-3 space-y-4">{look.advice.adjustments.map((item) => <li key={item.title}><p className="text-sm font-semibold">{item.title}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{item.detail}</p></li>)}</ul>
       </section>
     </> : <section className="px-6 py-24 text-center"><h1 className="font-display text-3xl">Look unavailable</h1><p className="mt-3 text-sm text-muted-foreground">It may have been removed or belongs to another account.</p><Button asChild className="mt-6"><Link to="/saved">Back to saved looks</Link></Button></section>}
-     {expanded && <div role="dialog" aria-modal="true" aria-label="Saved photo" className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4" onClick={() => { setExpanded(false); setZoomed(false); }}><div className="relative max-h-[90dvh] w-full max-w-3xl overflow-auto bg-background p-3 pt-12" onClick={(event) => event.stopPropagation()}><Button type="button" variant="ghost" size="icon" className="absolute left-3 top-2" aria-label={zoomed ? "Zoom out" : "Zoom in"} onClick={() => setZoomed((current) => !current)}>{zoomed ? <ZoomOut /> : <ZoomIn />}</Button><Button type="button" variant="ghost" className="absolute right-3 top-2" onClick={() => { setExpanded(false); setZoomed(false); }}>Close</Button><img src={look?.shopperImageUrl} alt={look?.advice.headline} className={zoomed ? "h-auto w-[200%] max-w-none" : "mx-auto max-h-[calc(90dvh-4rem)] w-full object-contain"} /></div></div>}
+     <Dialog open={expanded} onOpenChange={(open) => { setExpanded(open); if (!open) setZoomed(false); }}><DialogContent className="w-[calc(100vw-2rem)] max-w-3xl gap-0 rounded-md border-border p-3 pt-12"><DialogTitle className="sr-only">Saved photo</DialogTitle><Button type="button" variant="outline" size="icon" className="absolute left-3 top-2 size-9" aria-label={zoomed ? "Zoom out" : "Zoom in"} onClick={() => setZoomed((current) => !current)}>{zoomed ? <ZoomOut /> : <ZoomIn />}</Button><div className="max-h-[calc(100dvh-6rem)] overflow-auto">{look && <img src={look.shopperImageUrl} alt={look.advice.headline} className={zoomed ? "h-auto w-[200%] max-w-none" : "mx-auto max-h-[calc(100dvh-6rem)] w-full object-contain"} />}</div></DialogContent></Dialog>
      {message && <p role="alert" className="mx-5 rounded bg-destructive/5 p-3 text-sm text-destructive">{message}</p>}
     <AuthDialog open={authOpen} onOpenChange={setAuthOpen} onSignedIn={() => { setLoading(true); void load(); }} />
   </ShopLookShell>;

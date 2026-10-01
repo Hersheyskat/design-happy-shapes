@@ -16,4 +16,7 @@
 - [x] Keep the current generated look visible while the next product generates, switching only when its look is ready.
 - [x] Add the supplied TAGAS jacket exact Amazon page and two new dress catalogue photos with search fallbacks.
 - [x] Require Google sign-in before heart, save, share, or shopping actions, then continue the selected action after sign-in.
-- [ ] Replace remaining Amazon India search links with exact product pages when their shop URLs are provided (blocked: remaining product URLs not provided).
+- [x] Replace the sample catalogue with 10 men's and 10 women's products, hosted photos, current INR prices, and exact retailer pages.
+- [x] Add Google and passwordless email-code sign-in, private saved looks, product snapshots, and reliable profile creation.
+- [x] Move AI generation throttling into the database so it works across app instances.
+- [ ] Connect and publish shoplook.ai (blocked: domain-owner access and DNS confirmation are required).

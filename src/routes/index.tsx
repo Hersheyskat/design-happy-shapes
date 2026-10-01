@@ -230,16 +230,16 @@ function ShopLook() {
         </Button>
       </div>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" className="sr-only" onChange={upload} />
+      <div className="mt-5 flex gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Women</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Men</Button><span className="self-center text-xs text-muted-foreground">{audience ? `${visibleProducts.length} products` : "Choose a catalogue"}</span></div>
       <label htmlFor="style-note" className="mt-5 block text-sm font-semibold">What kind of look are you after? <span className="font-normal text-muted-foreground">Optional</span></label>
       <div className="mt-2 flex items-start gap-3 rounded-md border border-input bg-background px-3 py-3 focus-within:ring-1 focus-within:ring-ring">
         <MessageCircle className="mt-1 size-4 shrink-0 text-primary" />
         <textarea id="style-note" value={note} maxLength={280} rows={2} onChange={(event) => setNote(event.target.value)} placeholder="A relaxed dinner look under ₹5000" className="min-w-0 flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
       </div>
-      <div className="mt-5 flex gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Women</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Men</Button><span className="self-center text-xs text-muted-foreground">{audience ? `${visibleProducts.length} products` : "Choose a catalogue"}</span></div>
        {selectedProduct && selectedProduct.audience === audience && <div className="mt-4 flex items-center gap-3 rounded-md border border-primary bg-surface p-2"><img src={selectedProduct.image} alt="" className="size-14 rounded-sm object-contain" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase text-primary">First in your Look queue</p><p className="truncate text-sm font-medium">{selectedProduct.name}</p></div></div>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
-       <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create my look <Sparkles /></Button>
+        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create my ShopLook <Sparkles /></Button>
     </section>}
 
     {view === "try" && active && <section className="pb-12">

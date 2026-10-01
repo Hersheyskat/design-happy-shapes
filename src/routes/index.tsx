@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { ArrowLeft, ArrowRight, Bookmark, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, RotateCcw, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ type Product = CatalogProductDto;
 type PendingAction = { type: "favorite" | "save" | "share" | "buy"; productId: string };
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search) => z.object({ product: z.string().uuid().optional() }).catch({}).parse(search),
   head: () => ({ meta: [
     { title: "Shop your look — ShopLook" },
     { name: "description", content: "Upload your photo, explore apparel on your look, compare favorites, share and shop." },
@@ -50,6 +52,7 @@ function LookImage({ person, product, generated, comparison = false }: { person:
 }
 
 function ShopLook() {
+  const { product: selectedProductId } = Route.useSearch();
   const saveLook = useServerFn(saveMyLook);
   const loadCatalog = useServerFn(listCatalogProducts);
   const [products, setProducts] = useState<Product[]>([]);
@@ -59,7 +62,7 @@ function ShopLook() {
   const suggestionRequest = useRef(0);
   const [catalogError, setCatalogError] = useState("");
   useEffect(() => { void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again.")); }, [loadCatalog]);
-  const visibleProducts = products.filter((product) => product.audience === audience);
+  const visibleProducts = products.filter((product) => product.audience === audience).sort((left, right) => left.id === selectedProductId ? -1 : right.id === selectedProductId ? 1 : 0);
   const firstProduct = visibleProducts[0];
   const [view, setView] = useState<"start" | "try" | "compare">("start");
   const [photo, setPhoto] = useState<string | null>(null);

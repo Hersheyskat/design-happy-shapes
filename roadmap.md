@@ -2,7 +2,7 @@
 
 - [x] Identify the exact source location of the OpenRouter image-generation model and prompt.
 - [x] Make the virtual-look prompt replace the whole existing garment with the selected catalogue item; send its name with the product photo.
-- [ ] Replace the image-generation prompt with the supplied garment-aware instructions and verify a real try-on.
+- [x] Replace the image-generation prompt with the supplied garment-aware instructions and verify a real shirt try-on.
 - [x] Reserve a substantial, uncropped look-photo area; keep alternatives compact and page scrollable, with tap-to-expand zoom.
 - [x] Keep archived look photos uncropped in details, thumbnails, and progress comparison.
 - [ ] Validate saved-look details with a real signed-in archive entry (blocked: signed-in test account has no saved entries).

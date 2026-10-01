@@ -271,7 +271,7 @@ function ShopLook() {
       {suggestionMessage && <p role="status" className="mt-3 text-xs text-muted-foreground">{suggestionMessage}</p>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
-       <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create my virtual look <Sparkles /></Button>
+       <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create my look <Sparkles /></Button>
         <Button variant="ghost" disabled={!firstProduct} className="mt-2 h-14 w-full justify-start gap-3 border border-border px-3 text-sm" onClick={useSample}><img src={samplePerson} alt="" className="size-10 rounded-sm object-cover" /><span className="flex-1 text-left">Create a look with a sample photo</span><ArrowRight className="size-4" /></Button>
         <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Your photo stays on this device until you request a catalogue suggestion or create a look. You can change catalogues anytime.</p>
     </section>}

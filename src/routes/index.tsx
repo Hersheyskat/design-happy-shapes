@@ -10,7 +10,6 @@ import { ShopLookShell } from "@/components/shoplook-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { listCatalogProducts } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
-import samplePerson from "@/assets/shoplook-coral.jpg";
 type Product = CatalogProductDto;
 type PendingAction = { type: "favorite" | "share" | "buy"; productId: string };
 
@@ -90,7 +89,7 @@ function ShopLook() {
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const person = photo ?? samplePerson;
+  const person = photo ?? "";
   const active = products.find((product) => product.id === activeId) ?? firstProduct;
   const shareProduct = products.find((product) => product.id === shareId);
   const comparison = favorites.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product));
@@ -158,12 +157,6 @@ function ShopLook() {
     window.open(shopUrl(product), "_blank", "noopener,noreferrer");
   }
 
-  function useSample() {
-    if (!firstProduct) return;
-    setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setError(""); setView("try");
-    void generateLook(firstProduct, null);
-  }
-
   function selectProduct(id: string) {
     const product = products.find((item) => item.id === id);
     if (!product || generating) return;
@@ -172,15 +165,14 @@ function ShopLook() {
     else void generateLook(product);
   }
 
-  async function generateLook(product: Product, sourceFile: File | null = photoFile) {
-    if (generating) return;
+  async function generateLook(product: Product) {
+    if (generating || !photoFile) return;
     setGenerating(product.id); setGenerationError("");
     try {
-      const source = sourceFile ?? new File([await (await fetch(samplePerson)).blob()], "sample.jpg", { type: "image/jpeg" });
       const garmentBlob = await (await fetch(product.image)).blob();
       const garment = new File([garmentBlob], `${product.id}.${garmentBlob.type === "image/webp" ? "webp" : "jpg"}`, { type: garmentBlob.type });
       const form = new FormData();
-      form.append("person", source); form.append("garment", garment); form.append("note", note);
+      form.append("person", photoFile); form.append("garment", garment); form.append("note", note);
       const response = await fetch("/api/generate-look", { method: "POST", body: form });
       const result = await response.json().catch(() => ({})) as { image?: string; message?: string };
       if (!response.ok || !result.image) throw new Error(result.message ?? "OpenRouter could not make this look right now.");
@@ -272,8 +264,6 @@ function ShopLook() {
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create my look <Sparkles /></Button>
-        <Button variant="ghost" disabled={!firstProduct} className="mt-2 h-14 w-full justify-start gap-3 border border-border px-3 text-sm" onClick={useSample}><img src={samplePerson} alt="" className="size-10 rounded-sm object-cover" /><span className="flex-1 text-left">Create a look with a sample photo</span><ArrowRight className="size-4" /></Button>
-        <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Your photo stays on this device until you request a catalogue suggestion or create a look. You can change catalogues anytime.</p>
     </section>}
 
     {view === "try" && active && <section className="pb-12">

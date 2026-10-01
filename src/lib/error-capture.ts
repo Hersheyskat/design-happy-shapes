@@ -68,7 +68,13 @@ export function isDisconnectedRequest(error: unknown): boolean {
 // recorded for consumeLastCapturedError and expanded before serialization.
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]) => {
-  if (args.some(isDisconnectedRequest)) return;
+  const disconnect = args.find(isDisconnectedRequest);
+  if (disconnect) {
+    // h3 turns thrown errors into opaque 500 responses. Preserve the cause
+    // for the response wrapper without reporting a socket close as a crash.
+    record(disconnect);
+    return;
+  }
   const expanded = args.map((arg) => {
     if (!isErrorLike(arg)) return arg;
     record(arg);

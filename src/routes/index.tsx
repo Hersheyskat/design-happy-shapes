@@ -230,7 +230,8 @@ function ShopLook() {
         </Button>
       </div>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" className="sr-only" onChange={upload} />
-      <div className="mt-5 flex gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Women</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Men</Button><span className="self-center text-xs text-muted-foreground">{audience ? `${visibleProducts.length} products` : "Choose a catalogue"}</span></div>
+       <h2 className="mt-5 text-sm font-semibold">Choose a catalogue</h2>
+       <div className="mt-2 flex gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Women</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Men</Button>{audience && <span className="self-center text-xs text-muted-foreground">{visibleProducts.length} products</span>}</div>
       <label htmlFor="style-note" className="mt-5 block text-sm font-semibold">What kind of look are you after? <span className="font-normal text-muted-foreground">Optional</span></label>
       <div className="mt-2 flex items-start gap-3 rounded-md border border-input bg-background px-3 py-3 focus-within:ring-1 focus-within:ring-ring">
         <MessageCircle className="mt-1 size-4 shrink-0 text-primary" />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
@@ -21,9 +21,9 @@ function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useState(() => {
+  useEffect(() => {
     void loadCatalog().then(setProducts).catch(() => setError("The catalogue is unavailable. Please try again.")).finally(() => setLoading(false));
-  });
+  }, [loadCatalog]);
 
   const term = query.trim().toLowerCase();
   const filtered = products.filter((product) => product.audience === audience && (!term || `${product.name} ${product.retailer} ${product.category}`.toLowerCase().includes(term)));

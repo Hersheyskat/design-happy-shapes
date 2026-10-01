@@ -65,9 +65,6 @@ function ShopLook() {
   const loadCatalog = useServerFn(listCatalogProducts);
   const [products, setProducts] = useState<Product[]>([]);
   const [audience, setAudience] = useState<"men" | "women" | null>(null);
-  const [suggesting, setSuggesting] = useState(false);
-  const [suggestionMessage, setSuggestionMessage] = useState("");
-  const suggestionRequest = useRef(0);
   const [catalogError, setCatalogError] = useState("");
   useEffect(() => { void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again.")); }, [loadCatalog]);
   const selectedProduct = products.find((product) => product.id === selectedProductId);
@@ -102,32 +99,13 @@ function ShopLook() {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 8_000_000) {
       setError("Choose a JPG, PNG or WebP photo under 8 MB."); event.target.value = ""; return;
     }
-    suggestionRequest.current += 1;
-    setAudience(null); setSuggesting(false); setSuggestionMessage("");
+    setAudience(null);
     setError(""); setPhoto(URL.createObjectURL(file)); setPhotoFile(file); setGenerated({}); setGenerationError("");
     event.target.value = "";
   }
 
-  async function suggestCatalog() {
-    if (!photoFile || suggesting) return;
-    const requestId = ++suggestionRequest.current;
-    setSuggesting(true); setSuggestionMessage("");
-    try {
-      const form = new FormData(); form.append("photo", photoFile);
-      const response = await fetch("/api/suggest-catalog", { method: "POST", body: form });
-      const result = await response.json().catch(() => ({})) as { audience?: "men" | "women" | null; message?: string };
-      if (requestId !== suggestionRequest.current) return;
-      if (!response.ok) throw new Error(result.message ?? "Photo suggestions are unavailable. Choose a catalogue below.");
-      if (result.audience === "men" || result.audience === "women") { setAudience(result.audience); setActiveId(""); }
-      else setSuggestionMessage("No clear match from this photo. Choose the catalogue you prefer.");
-    } catch (reason) {
-      if (requestId === suggestionRequest.current) setSuggestionMessage(reason instanceof Error ? reason.message : "Choose a catalogue below.");
-    } finally { if (requestId === suggestionRequest.current) setSuggesting(false); }
-  }
-
   function chooseAudience(next: "men" | "women") {
-    suggestionRequest.current += 1;
-    setSuggesting(false); setSuggestionMessage(""); setAudience(next); setActiveId("");
+    setAudience(next); setActiveId("");
   }
 
   function applyFavorite(id: string) {
@@ -232,7 +210,7 @@ function ShopLook() {
     }
   }
 
-  function reset() { suggestionRequest.current += 1; setSuggesting(false); setSuggestionMessage(""); setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setNote(""); setFavorites([]); setActiveId(""); setShareId(null); setMessage(""); }
+  function reset() { setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setNote(""); setFavorites([]); setActiveId(""); setShareId(null); setMessage(""); }
 
   return <ShopLookShell>
     <header className="flex h-16 items-center justify-between border-b border-border px-5">
@@ -252,7 +230,6 @@ function ShopLook() {
         </Button>
       </div>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" className="sr-only" onChange={upload} />
-      {photoFile && <Button type="button" variant="outline" className="mt-3 w-full" disabled={suggesting} onClick={() => void suggestCatalog()}>{suggesting ? <LoaderCircle className="animate-spin" /> : <Sparkles />} {suggesting ? "Finding your catalogue…" : "Suggest a catalogue from my outfit"}</Button>}
       <label htmlFor="style-note" className="mt-5 block text-sm font-semibold">What kind of look are you after? <span className="font-normal text-muted-foreground">Optional</span></label>
       <div className="mt-2 flex items-start gap-3 rounded-md border border-input bg-background px-3 py-3 focus-within:ring-1 focus-within:ring-ring">
         <MessageCircle className="mt-1 size-4 shrink-0 text-primary" />
@@ -260,7 +237,6 @@ function ShopLook() {
       </div>
       <div className="mt-5 flex gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Women</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Men</Button><span className="self-center text-xs text-muted-foreground">{audience ? `${visibleProducts.length} products` : "Choose a catalogue"}</span></div>
        {selectedProduct && selectedProduct.audience === audience && <div className="mt-4 flex items-center gap-3 rounded-md border border-primary bg-surface p-2"><img src={selectedProduct.image} alt="" className="size-14 rounded-sm object-contain" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase text-primary">First in your Look queue</p><p className="truncate text-sm font-medium">{selectedProduct.name}</p></div></div>}
-      {suggestionMessage && <p role="status" className="mt-3 text-xs text-muted-foreground">{suggestionMessage}</p>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create my look <Sparkles /></Button>

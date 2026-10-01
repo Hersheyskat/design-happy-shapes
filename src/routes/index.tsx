@@ -156,7 +156,7 @@ function ShopLook() {
       const garmentBlob = await (await fetch(product.image)).blob();
       const garment = new File([garmentBlob], `${product.id}.${garmentBlob.type === "image/webp" ? "webp" : "jpg"}`, { type: garmentBlob.type });
       const form = new FormData();
-      form.append("person", photoFile); form.append("garment", garment); form.append("productName", product.name); form.append("note", "");
+       form.append("person", photoFile); form.append("garment", garment); form.append("productName", product.name);
       const response = await fetch("/api/generate-look", { method: "POST", body: form });
       const result = await response.json().catch(() => ({})) as { image?: string; message?: string };
       if (!response.ok || !result.image) throw new Error(result.message ?? "OpenRouter could not make this look right now.");

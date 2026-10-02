@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { ShopLookShell } from "@/components/shoplook-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { saveMyLook } from "@/lib/community.functions";
-import samplePerson from "@/assets/shoplook-coral.jpg";
 import blackBlazer from "@/assets/black-blazer.jpg.asset.json";
 import oliveCoord from "@/assets/olive-coord.webp.asset.json";
 import tealPolo from "@/assets/teal-polo.jpg.asset.json";
@@ -17,17 +16,17 @@ import tagasJacket from "@/assets/tagas-jacket.jpg.asset.json";
 import yellowDress from "@/assets/yellow-belted-dress.jpg.asset.json";
 import floralDress from "@/assets/black-floral-dress.jpg.asset.json";
 
-type Product = { id: string; name: string; category: string; image: string; search: string; productUrl?: string };
+type Product = { id: string; name: string; category: string; image: string; search: string; audience: "men" | "women"; productUrl?: string };
 const products: Product[] = [
-  { id: "black", name: "Black blazer", category: "Tailored", image: blackBlazer.url, search: "women black tailored blazer" },
-  { id: "olive", name: "Olive co-ord", category: "Relaxed set", image: oliveCoord.url, search: "women olive green co ord set" },
-  { id: "teal", name: "Teal polo", category: "Everyday", image: tealPolo.url, search: "men teal polo shirt" },
-  { id: "pink", name: "Pink blazer", category: "A pop of color", image: pinkBlazer.url, search: "women dusty pink blazer" },
-  { id: "tagas-jacket", name: "TAGAS track jacket", category: "Sporty layer", image: tagasJacket.url, search: "TAGAS men regular track jacket", productUrl: "https://www.amazon.in/dp/B0GP6KT76Z" },
-  { id: "yellow-dress", name: "Yellow belted dress", category: "Sunny day", image: yellowDress.url, search: "women yellow sleeveless belted midi dress" },
-  { id: "floral-dress", name: "Black floral dress", category: "Evening floral", image: floralDress.url, search: "women black pink floral maxi shirt dress" },
+  { id: "black", name: "Black blazer", category: "Tailored", image: blackBlazer.url, search: "women black tailored blazer", audience: "women" },
+  { id: "olive", name: "Olive co-ord", category: "Relaxed set", image: oliveCoord.url, search: "women olive green co ord set", audience: "women" },
+  { id: "teal", name: "Teal polo", category: "Everyday", image: tealPolo.url, search: "men teal polo shirt", audience: "men" },
+  { id: "pink", name: "Pink blazer", category: "A pop of color", image: pinkBlazer.url, search: "women dusty pink blazer", audience: "women" },
+  { id: "tagas-jacket", name: "TAGAS track jacket", category: "Sporty layer", image: tagasJacket.url, search: "TAGAS men regular track jacket", audience: "men", productUrl: "https://www.amazon.in/dp/B0GP6KT76Z" },
+  { id: "yellow-dress", name: "Yellow belted dress", category: "Sunny day", image: yellowDress.url, search: "women yellow sleeveless belted midi dress", audience: "women" },
+  { id: "floral-dress", name: "Black floral dress", category: "Evening floral", image: floralDress.url, search: "women black pink floral maxi shirt dress", audience: "women" },
 ];
-const firstProduct: Product = products[0] ?? { id: "black", name: "Black blazer", category: "Tailored", image: blackBlazer.url, search: "women black tailored blazer" };
+const firstProduct: Product = products[0] ?? { id: "black", name: "Black blazer", category: "Tailored", image: blackBlazer.url, search: "women black tailored blazer", audience: "women" };
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -73,7 +72,8 @@ function ShopLook() {
   const [generated, setGenerated] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState("");
-  const [note, setNote] = useState("");
+  const [mode, setMode] = useState<"styling" | "tryon">("styling");
+  const [audience, setAudience] = useState<"men" | "women" | null>(null);
   const [activeId, setActiveId] = useState(firstProduct.id);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [shareId, setShareId] = useState<string | null>(null);
@@ -84,8 +84,10 @@ function ShopLook() {
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  const person = photo ?? samplePerson;
-  const active = products.find((product) => product.id === activeId) ?? firstProduct;
+  const person = photo ?? "";
+  const visibleProducts = audience ? products.filter((product) => product.audience === audience) : products;
+  const selectedFirst = visibleProducts[0] ?? firstProduct;
+  const active = products.find((product) => product.id === activeId) ?? selectedFirst;
   const shareProduct = products.find((product) => product.id === shareId);
   const comparison = favorites.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product));
 
@@ -105,9 +107,17 @@ function ShopLook() {
     setFavorites((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
-  function useSample() {
-    setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setError(""); setView("try");
-    void generateLook(firstProduct, null);
+  function chooseAudience(next: "men" | "women") {
+    setAudience(next);
+    const nextFirst = products.find((product) => product.audience === next);
+    if (nextFirst) setActiveId(nextFirst.id);
+  }
+
+  function chooseMode(next: "styling" | "tryon") {
+    if (next === mode) return;
+    setMode(next);
+    setGenerated({});
+    setGenerationError("");
   }
 
   function selectProduct(id: string) {
@@ -118,15 +128,15 @@ function ShopLook() {
     else void generateLook(product);
   }
 
-  async function generateLook(product: Product, sourceFile: File | null = photoFile) {
-    if (generating) return;
+  async function generateLook(product: Product) {
+    if (generating || !photoFile) return;
     setGenerating(product.id); setGenerationError("");
     try {
-      const source = sourceFile ?? new File([await (await fetch(samplePerson)).blob()], "sample.jpg", { type: "image/jpeg" });
+      const source = photoFile;
       const garmentBlob = await (await fetch(product.image)).blob();
       const garment = new File([garmentBlob], `${product.id}.${garmentBlob.type === "image/webp" ? "webp" : "jpg"}`, { type: garmentBlob.type });
       const form = new FormData();
-      form.append("person", source); form.append("garment", garment); form.append("note", note);
+      form.append("person", source); form.append("garment", garment); form.append("productName", product.name); form.append("mode", mode);
       const response = await fetch("/api/generate-look", { method: "POST", body: form });
       const result = await response.json().catch(() => ({})) as { image?: string; message?: string };
       if (!response.ok || !result.image) throw new Error(result.message ?? "OpenRouter could not make this look right now.");
@@ -187,7 +197,7 @@ function ShopLook() {
           mood: "classic",
           advice: {
             headline: `${product.name} ShopLook`,
-            summary: note.trim() || `A personal virtual look built around the ${product.name}.`,
+            summary: `A personal virtual look built around the ${product.name}.`,
             colors: [
               { name: "Charcoal", hex: "#303033", use: "A grounding neutral for accessories." },
               { name: "Soft white", hex: "#f5f2ea", use: "A clean contrast for layers." },
@@ -228,7 +238,7 @@ function ShopLook() {
     }
   }
 
-  function reset() { setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setNote(""); setFavorites([]); setActiveId(firstProduct.id); setShareId(null); setMessage(""); }
+  function reset() { setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setMode("styling"); setAudience(null); setFavorites([]); setActiveId(firstProduct.id); setShareId(null); setMessage(""); }
 
   return <ShopLookShell>
     <header className="flex h-16 items-center justify-between border-b border-border px-5">
@@ -248,24 +258,30 @@ function ShopLook() {
         </Button>
       </div>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" className="sr-only" onChange={upload} />
-      <label htmlFor="style-note" className="mt-5 block text-sm font-semibold">What kind of look are you after? <span className="font-normal text-muted-foreground">Optional</span></label>
-      <div className="mt-2 flex items-start gap-3 rounded-md border border-input bg-background px-3 py-3 focus-within:ring-1 focus-within:ring-ring">
-        <MessageCircle className="mt-1 size-4 shrink-0 text-primary" />
-        <textarea id="style-note" value={note} maxLength={280} rows={2} onChange={(event) => setNote(event.target.value)} placeholder="Something for brunch, an easy work look…" className="min-w-0 flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+      <div className="mt-5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2">
+        <h2 className="text-sm font-semibold">Choose one</h2>
+        <h2 className="text-right text-sm font-semibold">Mode</h2>
+        <div className="flex flex-wrap items-start gap-2" role="group" aria-label="Explore products">
+          <Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Woman</Button>
+          <Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Man</Button>
+        </div>
+        <div className="flex justify-end gap-1.5" role="group" aria-label="Mode">
+          <Button type="button" className="h-10 px-2.5 text-xs sm:px-3 sm:text-sm" aria-pressed={mode === "styling"} variant={mode === "styling" ? "default" : "outline"} onClick={() => chooseMode("styling")}>Styling</Button>
+          <Button type="button" className="h-10 px-2.5 text-xs sm:px-3 sm:text-sm" aria-pressed={mode === "tryon"} variant={mode === "tryon" ? "default" : "outline"} onClick={() => chooseMode("tryon")}>Tryon</Button>
+        </div>
       </div>
+      {audience && <span className="mt-2 block text-xs text-muted-foreground">{visibleProducts.length} products</span>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
-       <Button className="mt-5 h-12 w-full text-base" disabled={!photo} onClick={() => { setView("try"); void generateLook(firstProduct); }}>Create my virtual look <Sparkles /></Button>
-        <Button variant="ghost" className="mt-2 h-14 w-full justify-start gap-3 border border-border px-3 text-sm" onClick={useSample}><img src={samplePerson} alt="" className="size-10 rounded-sm object-cover" /><span className="flex-1 text-left">Create a look with a sample photo</span><ArrowRight className="size-4" /></Button>
-        <p className="mt-4 text-center text-[11px] leading-4 text-muted-foreground">Creating a look sends your photo, the selected product and your style note to OpenRouter. Uploading alone keeps your photo on this device.</p>
+       <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !audience} onClick={() => { setView("try"); void generateLook(selectedFirst); }}>Create my virtual look <Sparkles /></Button>
     </section>}
 
     {view === "try" && <section className="pb-12">
-       <div className="px-5 pb-4 pt-6"><p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style studio</p><h1 className="mt-1 font-display text-4xl">Try a new look</h1>{note && <p className="mt-2 border-l-2 border-primary pl-3 text-sm italic text-muted-foreground">“{note}”</p>}</div>
+       <div className="px-5 pb-4 pt-6"><p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style studio</p><h1 className="mt-1 font-display text-4xl">Try a new look</h1></div>
          <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your {products.find((product) => product.id === generating)?.name ?? "next"} look…</div>}</div>
          <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{active.name}</h2><p className="text-xs text-muted-foreground">{generated[active.id] ? "AI visualization · not a fit guarantee" : `${active.category} · showing your original photo until your look is ready`}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => toggleFavorite(active.id)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
-          <div className="px-5 pt-3"><p className="text-center text-[11px] leading-4 text-muted-foreground">Tap a product below to create another look. Your photo, the product photo and style note are sent to OpenRouter. AI images may change the fit, color, fabric or product details.</p>{generationError && <p role="alert" className="mt-2 text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p>}</div>
+          <div className="px-5 pt-3"><p className="text-center text-[11px] leading-4 text-muted-foreground">Tap a product below to create another look. Your photo and the product photo are sent to OpenRouter. AI images may change the fit, color, fabric or product details.</p>{generationError && <p role="alert" className="mt-2 text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p>}</div>
       <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Try another piece</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
-         <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{products.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span></Button>)}</div>
+         <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{visibleProducts.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 py-2 text-xs font-medium">{product.name}</span></Button>)}</div>
          <div className="mt-5 grid grid-cols-3 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => setShareId(active.id)}><Share2 /> Share</Button><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id] || saving === active.id} onClick={() => void saveGeneratedLook(active)}>{saving === active.id ? <LoaderCircle className="animate-spin" /> : saved.includes(active.id) ? <Check /> : <Bookmark />} {saved.includes(active.id) ? "Saved" : "Save"}</Button><Button asChild className="h-11 px-2"><a href={shopUrl(active)} target="_blank" rel="noopener noreferrer"><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</a></Button></div>
        <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">{active.productUrl ? "Buy opens this product on Amazon India." : "Search opens similar products on Amazon India."} ShopLook has no retailer partnership; price, stock, seller and product match may vary.</p>
          <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare favorites ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{favorites.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>

@@ -36,3 +36,4 @@
 - [x] Open WhatsApp directly with a prefilled ShopLook message and link while keeping Instagram image sharing private through the device share sheet.
 - [x] Restore an explicit private Save action for completed ShopLooks, with sign-in continuation and Saved archive access.
 - [x] Make the heart the single Save my look action and remove the separate save button.
+- [x] Allow multiple hearted ShopLooks to save independently, with each heart filling only after its own upload succeeds.

@@ -28,3 +28,4 @@
 - [x] Rename the main action to “Create your Shop.”
 - [x] Rename the main action to “Create your ShopLook.”
 - [x] Replace labeled Share and Buy buttons in look comparison with compact action icons.
+- [x] Shorten the look-generation status to “Creating your ShopLook…”

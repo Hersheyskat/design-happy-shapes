@@ -104,6 +104,11 @@ function ShopLook() {
 
   useEffect(() => () => { if (photo?.startsWith("blob:")) URL.revokeObjectURL(photo); }, [photo]);
   useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(""), 2_000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+  useEffect(() => {
     if (videoRef.current && cameraStream) videoRef.current.srcObject = cameraStream;
   }, [cameraStream]);
   useEffect(() => () => cameraStream?.getTracks().forEach((track) => track.stop()), [cameraStream]);
@@ -263,12 +268,13 @@ function ShopLook() {
           title: `My ShopLook — ${product.name}`,
           text: `Sharing my ShopLook on ${destination}`,
         });
-        setMessage(`Your ShopLook is ready for ${destination}.`);
+        setShareId(null);
       } else {
         const link = document.createElement("a");
         const url = URL.createObjectURL(image);
         link.href = url; link.download = image.name; link.click();
         window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        setShareId(null);
         setMessage(`Image downloaded. Open ${destination} and choose it from your photos.`);
       }
     } catch (reason) {

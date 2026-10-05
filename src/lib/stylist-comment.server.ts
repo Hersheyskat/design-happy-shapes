@@ -55,7 +55,7 @@ export async function createStylistComment(input: StylistCommentInput) {
         "Keep the full comment under 55 words and make it helpful rather than flattering by default.",
       ].join("\n"),
     },
-    { type: "image", image: new URL(input.lookImage) },
+    { type: "file", data: { type: "url", url: new URL(input.lookImage) }, mediaType: input.lookImage.slice(5, input.lookImage.indexOf(";")) },
   ];
 
   try {

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ArrowLeft, ArrowRight, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, RotateCcw, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, Share2, ShoppingBag, Sparkles, Upload, X } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -84,13 +84,29 @@ function ShopLook() {
   const [error, setError] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [photoChoiceOpen, setPhotoChoiceOpen] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [capturedSelfie, setCapturedSelfie] = useState<{ file: File; url: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const person = photo ?? "";
   const active = products.find((product) => product.id === activeId) ?? firstProduct;
   const shareProduct = products.find((product) => product.id === shareId);
   const comparison = favorites.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product && generated[product.id]));
 
   useEffect(() => () => { if (photo?.startsWith("blob:")) URL.revokeObjectURL(photo); }, [photo]);
+  useEffect(() => {
+    if (videoRef.current && cameraStream) videoRef.current.srcObject = cameraStream;
+  }, [cameraStream]);
+  useEffect(() => () => cameraStream?.getTracks().forEach((track) => track.stop()), [cameraStream]);
+
+  function applyPhoto(file: File, url: string) {
+    setAudience(null);
+    setError(""); setPhoto(url); setPhotoFile(file); setGenerated({}); setFavorites([]); setGenerationError("");
+  }
 
   function upload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -98,9 +114,66 @@ function ShopLook() {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 8_000_000) {
       setError("Choose a JPG, PNG or WebP photo under 8 MB."); event.target.value = ""; return;
     }
-    setAudience(null);
-    setError(""); setPhoto(URL.createObjectURL(file)); setPhotoFile(file); setGenerated({}); setFavorites([]); setGenerationError("");
+    applyPhoto(file, URL.createObjectURL(file));
     event.target.value = "";
+  }
+
+  function stopCamera() {
+    cameraStream?.getTracks().forEach((track) => track.stop());
+    setCameraStream(null);
+  }
+
+  function closeCamera() {
+    stopCamera();
+    if (capturedSelfie) URL.revokeObjectURL(capturedSelfie.url);
+    setCapturedSelfie(null); setCameraOpen(false); setCameraError("");
+  }
+
+  async function startCamera() {
+    setPhotoChoiceOpen(false); setCameraOpen(true); setCameraError("");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("A camera is not available in this browser. You can upload a photo instead.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      setCameraStream(stream);
+    } catch {
+      setCameraError("Camera access was not allowed. You can upload a photo instead.");
+    }
+  }
+
+  function captureSelfie() {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !video.videoWidth || !video.videoHeight) return;
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.translate(canvas.width, 0); context.scale(-1, 1); context.drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `shoplook-selfie-${Date.now()}.jpg`, { type: "image/jpeg" });
+      setCapturedSelfie({ file, url: URL.createObjectURL(blob) });
+      stopCamera();
+    }, "image/jpeg", 0.9);
+  }
+
+  async function retakeSelfie() {
+    if (capturedSelfie) URL.revokeObjectURL(capturedSelfie.url);
+    setCapturedSelfie(null); setCameraError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      setCameraStream(stream);
+    } catch {
+      setCameraError("Camera access was not allowed. You can upload a photo instead.");
+    }
+  }
+
+  function useSelfie() {
+    if (!capturedSelfie) return;
+    applyPhoto(capturedSelfie.file, capturedSelfie.url);
+    setCapturedSelfie(null); setCameraOpen(false); setCameraError("");
   }
 
   function chooseAudience(next: "men" | "women") {
@@ -215,7 +288,7 @@ function ShopLook() {
     <header className="flex h-16 items-center justify-between border-b border-border px-5">
       {view === "start" ? <span className="w-10" /> : <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => setView(view === "compare" ? "try" : "start")}><ArrowLeft /></Button>}
       <Button variant="ghost" onClick={reset} className="font-display text-2xl font-normal">ShopLook</Button>
-      {view === "start" ? <span className="w-10" /> : <Button variant="ghost" size="icon" aria-label="Start over" onClick={reset}><RotateCcw /></Button>}
+      <span className="w-10" />
     </header>
 
     {view === "start" && <section className="px-5 pb-12 pt-7">
@@ -223,7 +296,7 @@ function ShopLook() {
       <h1 className="mt-3 font-display text-5xl leading-none">Shop your look.</h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">Fashion shopping made personal and fun.</p>
       <div className="mt-6 overflow-hidden rounded-md bg-surface">
-        <Button type="button" variant="ghost" className="relative aspect-[5/4] h-auto w-full rounded-none p-0" onClick={() => fileRef.current?.click()} aria-label={photo ? "Change your photo" : "Upload your photo"}>
+        <Button type="button" variant="ghost" className="relative aspect-[5/4] h-auto w-full rounded-none p-0" onClick={() => setPhotoChoiceOpen(true)} aria-label={photo ? "Change your photo" : "Add your photo"}>
           {photo ? <img src={photo} alt="Your photo preview" className="size-full object-cover" /> : <div className="flex size-full flex-col items-center justify-center gap-3 bg-surface"><span className="grid size-14 place-items-center rounded-full bg-background text-primary"><ImagePlus className="size-6" /></span><span className="font-display text-2xl">Add your photo</span><span className="text-xs text-muted-foreground">Choose a clear picture of yourself</span></div>}
           {photo && <span className="absolute bottom-3 right-3 rounded bg-overlay px-3 py-1.5 text-xs text-overlay-foreground"><Check className="mr-1 inline size-3" /> Photo ready · tap to change</span>}
         </Button>
@@ -254,6 +327,10 @@ function ShopLook() {
         {comparison.length === 0 && <div className="py-16 text-center"><Heart className="mx-auto mb-3 size-7 text-primary" /><p className="text-sm text-muted-foreground">Your shortlist is empty. Generate a look and heart it to compare here.</p></div>}
          <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">AI visualizations are not fit guarantees · retailer links are for discovery · no partnership implied</p>
     </section>}
+
+    {photoChoiceOpen && <div role="dialog" aria-modal="true" aria-label="Add your photo" className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setPhotoChoiceOpen(false); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Add your photo</h2><Button variant="ghost" size="icon" aria-label="Close photo options" onClick={() => setPhotoChoiceOpen(false)}><X /></Button></div><div className="mt-5 grid gap-2"><Button className="h-12 justify-start" onClick={() => { setPhotoChoiceOpen(false); fileRef.current?.click(); }}><Upload /> Upload your photo</Button><Button variant="outline" className="h-12 justify-start" onClick={() => void startCamera()}><Camera /> Take your selfie</Button></div></div></div>}
+
+    {cameraOpen && <div role="dialog" aria-modal="true" aria-label="Take your selfie" className="fixed inset-0 z-50 flex items-end justify-center bg-scrim"><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Take your selfie</h2><Button variant="ghost" size="icon" aria-label="Cancel selfie" onClick={closeCamera}><X /></Button></div><div className="mt-4 aspect-[3/4] overflow-hidden rounded-md bg-surface">{capturedSelfie ? <img src={capturedSelfie.url} alt="Your captured selfie" className="size-full object-cover" /> : cameraError ? <div className="flex size-full items-center justify-center px-8 text-center text-sm text-muted-foreground">{cameraError}</div> : <video ref={videoRef} autoPlay playsInline muted className="size-full scale-x-[-1] object-cover" />}</div><canvas ref={canvasRef} className="hidden" />{capturedSelfie ? <div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void retakeSelfie()}><Camera /> Retake</Button><Button className="h-12" onClick={useSelfie}><Check /> Use photo</Button></div> : cameraError ? <div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={closeCamera}>Cancel</Button><Button className="h-12" onClick={() => { closeCamera(); fileRef.current?.click(); }}><Upload /> Upload</Button></div> : <Button className="mt-4 h-12 w-full" onClick={captureSelfie}><Camera /> Capture</Button>}</div></div>}
 
     {shareProduct && <div role="dialog" aria-modal="true" aria-label={`Share ${shareProduct.name}`} className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setShareId(null); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Share your look</h2><Button variant="ghost" size="icon" aria-label="Close share options" onClick={() => setShareId(null)}><X /></Button></div><p className="mt-2 text-xs leading-5 text-muted-foreground">Share your look with friends on Insta and WhatsApp for feedback &amp; fun :)</p><div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void shareImage(shareProduct)}><Instagram /> Instagram</Button><Button variant="outline" className="h-12" onClick={() => void shareImage(shareProduct)}><MessageCircle /> WhatsApp</Button></div><Button variant="outline" className="mt-2 h-12 w-full" onClick={() => void copyLink()}><LinkIcon /> Copy app link</Button>{message && <p role="status" className="mt-3 text-xs text-primary">{message}</p>}</div></div>}
     {message && !shareProduct && <p role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto max-w-sm rounded-md bg-overlay px-4 py-3 text-center text-sm text-overlay-foreground shadow-float">{message}</p>}

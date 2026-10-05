@@ -11,6 +11,8 @@
 ## Privacy and account behavior
 - New looks remain private unless the owner explicitly publishes them from the Saved page.
 - Ownership comes only from the verified signed-in account; the browser cannot choose another user ID.
+- The currently registered ShopLook account is **thekathuria@gmail.com**. Saves made while signed into that account belong to its private internal user ID; a different signed-in email gets its own separate archive.
+- Storage is the ShopLook project’s managed Lovable Cloud backend, not the separate Supabase organization shown in the screenshot.
 - Login remains passwordless: Google or a six-digit email code. No password will be created or exposed.
 
 ## Technical details

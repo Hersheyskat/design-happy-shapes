@@ -9,7 +9,6 @@ import { styleMoods } from "./community.types";
 
 const colorSchema = z.object({ name: z.string().max(60), hex: z.string().regex(/^#[0-9a-f]{6}$/i), use: z.string().max(240) });
 const adjustmentSchema = z.object({ title: z.string().max(100), detail: z.string().max(400) });
-const shoppingItemSchema = z.object({ label: z.string().max(100), searchTerm: z.string().max(160), reason: z.string().max(240), destinationUrl: z.string().url().max(2048) });
 const saveInput = z.object({
   shopperImagePath: z.string().min(1).max(500),
   productImagePath: z.string().min(1).max(500).nullable(),

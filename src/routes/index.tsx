@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ArrowLeft, ArrowRight, Camera, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, Share2, ShoppingBag, Sparkles, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, Save, Share2, ShoppingBag, Sparkles, Upload, X } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -8,11 +8,11 @@ import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
 import { ShopLookShell } from "@/components/shoplook-shell";
 import { supabase } from "@/integrations/supabase/client";
-import { listCatalogProducts } from "@/lib/community.functions";
+import { listCatalogProducts, saveMyLook } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 import { analyseGeneratedLook } from "@/lib/stylist-comment.functions";
 type Product = CatalogProductDto;
-type PendingAction = { type: "favorite" | "share" | "buy"; productId: string };
+type PendingAction = { type: "favorite" | "share" | "buy" | "save"; productId: string };
 
 export const Route = createFileRoute("/")({
   validateSearch: (search) => z.object({ product: z.string().optional(), mood: z.string().optional() }).catch({}).parse(search),
@@ -65,10 +65,16 @@ function ShopLook() {
   const { product: selectedProductId } = Route.useSearch();
   const loadCatalog = useServerFn(listCatalogProducts);
   const requestStylistComment = useServerFn(analyseGeneratedLook);
+  const persistLook = useServerFn(saveMyLook);
   const [products, setProducts] = useState<Product[]>([]);
   const [audience, setAudience] = useState<"men" | "women" | null>(null);
   const [catalogError, setCatalogError] = useState("");
-  useEffect(() => { void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again.")); }, [loadCatalog]);
+  const catalogRequested = useRef(false);
+  useEffect(() => {
+    if (catalogRequested.current) return;
+    catalogRequested.current = true;
+    void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again."));
+  }, [loadCatalog]);
   const selectedProduct = products.find((product) => product.id === selectedProductId);
   useEffect(() => { if (selectedProduct) setAudience(selectedProduct.audience); }, [selectedProduct]);
   const visibleProducts = products.filter((product) => product.audience === audience).sort((left, right) => left.id === selectedProductId ? -1 : right.id === selectedProductId ? 1 : 0);
@@ -89,6 +95,8 @@ function ShopLook() {
   const [error, setError] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [savedLooks, setSavedLooks] = useState<Record<string, string>>({});
   const [photoChoiceOpen, setPhotoChoiceOpen] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState("");
@@ -115,7 +123,7 @@ function ShopLook() {
 
   function applyPhoto(file: File, url: string) {
     setAudience(null);
-    setError(""); setPhoto(url); setPhotoFile(file); setGenerated({}); setStylistComments({}); setStylistErrors({}); setFavorites([]); setGenerationError("");
+    setError(""); setPhoto(url); setPhotoFile(file); setGenerated({}); setStylistComments({}); setStylistErrors({}); setFavorites([]); setSavedLooks({}); setGenerationError("");
   }
 
   function upload(event: ChangeEvent<HTMLInputElement>) {
@@ -218,6 +226,48 @@ function ShopLook() {
     window.open(shopUrl(product), "_blank", "noopener,noreferrer");
   }
 
+  async function saveLook(product: Product) {
+    if (!await requireSignIn({ type: "save", productId: product.id })) return;
+    const generatedImage = generated[product.id];
+    const stylistComment = stylistComments[product.id];
+    if (!generatedImage || !stylistComment || savingId || savedLooks[product.id]) return;
+    setSavingId(product.id); setMessage("");
+    const uploadedPaths: string[] = [];
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) throw new Error("Please sign in again to save this look.");
+      const folder = `${userData.user.id}/looks/${crypto.randomUUID()}`;
+      const lookBlob = await (await fetch(generatedImage)).blob();
+      const lookPath = `${folder}/shoplook.${lookBlob.type === "image/webp" ? "webp" : "png"}`;
+      const lookUpload = await supabase.storage.from("shoplook-media").upload(lookPath, lookBlob, { contentType: lookBlob.type || "image/png" });
+      if (lookUpload.error) throw lookUpload.error;
+      uploadedPaths.push(lookPath);
+
+      const productBlob = await (await fetch(product.image)).blob();
+      const productPath = `${folder}/product.${productBlob.type === "image/webp" ? "webp" : "jpg"}`;
+      const productUpload = await supabase.storage.from("shoplook-media").upload(productPath, productBlob, { contentType: productBlob.type || "image/jpeg" });
+      if (productUpload.error) throw productUpload.error;
+      uploadedPaths.push(productPath);
+
+      const saved = await persistLook({ data: {
+        shopperImagePath: lookPath,
+        productImagePath: productPath,
+        productUrl: product.productUrl,
+        catalogProductId: product.id,
+        styleNote: "",
+        mood: "classic",
+        stylistComment,
+      } });
+      setSavedLooks((current) => ({ ...current, [product.id]: saved.id }));
+      setMessage("Saved privately to your Saved looks.");
+    } catch (reason) {
+      if (uploadedPaths.length) await supabase.storage.from("shoplook-media").remove(uploadedPaths);
+      setMessage(reason instanceof Error ? reason.message : "This look could not be saved. Please try again.");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   function selectProduct(id: string) {
     const product = products.find((item) => item.id === id);
     if (!product || generating) return;
@@ -300,6 +350,7 @@ function ShopLook() {
     if (action.type === "favorite") applyFavorite(product.id);
     if (action.type === "share") setShareId(product.id);
     if (action.type === "buy") window.open(shopUrl(product), "_blank", "noopener,noreferrer");
+    if (action.type === "save") void saveLook(product);
   }
 
   async function copyLink() {
@@ -317,7 +368,7 @@ function ShopLook() {
     }
   }
 
-  function reset() { setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setStylistComments({}); setStylistErrors({}); setStylistLoading(null); setGenerationError(""); setFavorites([]); setActiveId(""); setShareId(null); setMessage(""); }
+  function reset() { setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setStylistComments({}); setStylistErrors({}); setStylistLoading(null); setGenerationError(""); setFavorites([]); setSavedLooks({}); setActiveId(""); setShareId(null); setMessage(""); }
 
   return <ShopLookShell>
     <header className="flex h-16 items-center justify-between border-b border-border px-5">
@@ -348,7 +399,8 @@ function ShopLook() {
     {view === "try" && active && <section className="pb-12">
          <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your ShopLook…</div>}</div>
            <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{productBrand(active.name)}</h2><p className="text-sm text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
-           <div className="mt-4 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button className="h-11 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
+            <div className="mt-4 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button className="h-11 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
+            <div className="mt-2 px-5"><Button variant="outline" className="h-11 w-full" disabled={!generated[active.id] || !stylistComments[active.id] || savingId === active.id || Boolean(savedLooks[active.id])} onClick={() => void saveLook(active)}>{savingId === active.id ? <LoaderCircle className="animate-spin" /> : savedLooks[active.id] ? <Check /> : <Save />} {savedLooks[active.id] ? "Saved to my looks" : "Save my look"}</Button></div>
            {generated[active.id] && <div className="mx-5 mt-4 border-y border-border py-4"><div className="flex items-center gap-2 text-primary"><Sparkles className="size-4" /><h3 className="text-sm font-semibold">Stylist's take</h3></div>{stylistLoading === active.id ? <p role="status" className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Reviewing your look…</p> : stylistComments[active.id] ? <p className="mt-2 text-sm leading-6">{stylistComments[active.id]}</p> : stylistErrors[active.id] ? <p role="alert" className="mt-2 text-sm text-muted-foreground">{stylistErrors[active.id]}</p> : null}</div>}
           {generationError && <div className="px-5 pt-3"><p role="alert" className="text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p></div>}
       <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Create more looks</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>

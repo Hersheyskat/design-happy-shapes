@@ -34,3 +34,4 @@
 - [x] Make Instagram and WhatsApp sharing destination-specific, with the generated look attached through native sharing and a clear download fallback.
 - [x] Remove successful-share confirmation and automatically dismiss download feedback after two seconds.
 - [x] Open WhatsApp directly with a prefilled ShopLook message and link while keeping Instagram image sharing private through the device share sheet.
+- [x] Restore an explicit private Save action for completed ShopLooks, with sign-in continuation and Saved archive access.

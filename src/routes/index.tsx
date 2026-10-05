@@ -69,7 +69,12 @@ function ShopLook() {
   const [products, setProducts] = useState<Product[]>([]);
   const [audience, setAudience] = useState<"men" | "women" | null>(null);
   const [catalogError, setCatalogError] = useState("");
-  useEffect(() => { void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again.")); }, [loadCatalog]);
+  const catalogRequested = useRef(false);
+  useEffect(() => {
+    if (catalogRequested.current) return;
+    catalogRequested.current = true;
+    void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again."));
+  }, [loadCatalog]);
   const selectedProduct = products.find((product) => product.id === selectedProductId);
   useEffect(() => { if (selectedProduct) setAudience(selectedProduct.audience); }, [selectedProduct]);
   const visibleProducts = products.filter((product) => product.audience === audience).sort((left, right) => left.id === selectedProductId ? -1 : right.id === selectedProductId ? 1 : 0);

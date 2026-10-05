@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ArrowLeft, ArrowRight, Camera, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, Save, Share2, ShoppingBag, Sparkles, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, Check, Heart, ImagePlus, Instagram, Link as LinkIcon, LoaderCircle, MessageCircle, Share2, ShoppingBag, Sparkles, Upload, X } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -12,7 +12,7 @@ import { listCatalogProducts, saveMyLook } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 import { analyseGeneratedLook } from "@/lib/stylist-comment.functions";
 type Product = CatalogProductDto;
-type PendingAction = { type: "favorite" | "share" | "buy" | "save"; productId: string };
+type PendingAction = { type: "favorite" | "share" | "buy"; productId: string };
 
 export const Route = createFileRoute("/")({
   validateSearch: (search) => z.object({ product: z.string().optional(), mood: z.string().optional() }).catch({}).parse(search),
@@ -211,8 +211,16 @@ function ShopLook() {
   }
 
   async function favoriteLook(product: Product) {
+    if (favorites.includes(product.id)) {
+      applyFavorite(product.id);
+      return;
+    }
     if (!await requireSignIn({ type: "favorite", productId: product.id })) return;
-    applyFavorite(product.id);
+    if (savedLooks[product.id]) {
+      applyFavorite(product.id);
+      return;
+    }
+    if (await saveLook(product)) applyFavorite(product.id);
   }
 
   async function openShare(product: Product) {
@@ -227,10 +235,10 @@ function ShopLook() {
   }
 
   async function saveLook(product: Product) {
-    if (!await requireSignIn({ type: "save", productId: product.id })) return;
     const generatedImage = generated[product.id];
     const stylistComment = stylistComments[product.id];
-    if (!generatedImage || !stylistComment || savingId || savedLooks[product.id]) return;
+    if (!generatedImage || !stylistComment || savingId) return false;
+    if (savedLooks[product.id]) return true;
     setSavingId(product.id); setMessage("");
     const uploadedPaths: string[] = [];
     try {
@@ -260,9 +268,11 @@ function ShopLook() {
       } });
       setSavedLooks((current) => ({ ...current, [product.id]: saved.id }));
       setMessage("Saved privately to your Saved looks.");
+      return true;
     } catch (reason) {
       if (uploadedPaths.length) await supabase.storage.from("shoplook-media").remove(uploadedPaths);
       setMessage(reason instanceof Error ? reason.message : "This look could not be saved. Please try again.");
+      return false;
     } finally {
       setSavingId(null);
     }
@@ -347,10 +357,9 @@ function ShopLook() {
     const product = products.find((item) => item.id === action.productId);
     if (!product) { setPendingAction(null); return; }
     setPendingAction(null);
-    if (action.type === "favorite") applyFavorite(product.id);
+    if (action.type === "favorite") void favoriteLook(product);
     if (action.type === "share") setShareId(product.id);
     if (action.type === "buy") window.open(shopUrl(product), "_blank", "noopener,noreferrer");
-    if (action.type === "save") void saveLook(product);
   }
 
   async function copyLink() {
@@ -398,9 +407,8 @@ function ShopLook() {
 
     {view === "try" && active && <section className="pb-12">
          <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your ShopLook…</div>}</div>
-           <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{productBrand(active.name)}</h2><p className="text-sm text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
+           <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{productBrand(active.name)}</h2><p className="text-sm text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id] || !stylistComments[active.id] || savingId === active.id} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from comparison` : `Save ${active.name} to my looks`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}>{savingId === active.id ? <LoaderCircle className="animate-spin" /> : <Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} />}</Button></div>
             <div className="mt-4 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button className="h-11 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
-            <div className="mt-2 px-5"><Button variant="outline" className="h-11 w-full" disabled={!generated[active.id] || !stylistComments[active.id] || savingId === active.id || Boolean(savedLooks[active.id])} onClick={() => void saveLook(active)}>{savingId === active.id ? <LoaderCircle className="animate-spin" /> : savedLooks[active.id] ? <Check /> : <Save />} {savedLooks[active.id] ? "Saved to my looks" : "Save my look"}</Button></div>
            {generated[active.id] && <div className="mx-5 mt-4 border-y border-border py-4"><div className="flex items-center gap-2 text-primary"><Sparkles className="size-4" /><h3 className="text-sm font-semibold">Stylist's take</h3></div>{stylistLoading === active.id ? <p role="status" className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Reviewing your look…</p> : stylistComments[active.id] ? <p className="mt-2 text-sm leading-6">{stylistComments[active.id]}</p> : stylistErrors[active.id] ? <p role="alert" className="mt-2 text-sm text-muted-foreground">{stylistErrors[active.id]}</p> : null}</div>}
           {generationError && <div className="px-5 pt-3"><p role="alert" className="text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p></div>}
       <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Create more looks</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>

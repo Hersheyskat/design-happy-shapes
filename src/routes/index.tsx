@@ -10,6 +10,7 @@ import { ShopLookShell } from "@/components/shoplook-shell";
 import { supabase } from "@/integrations/supabase/client";
 import { listCatalogProducts } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
+import { analyseGeneratedLook } from "@/lib/stylist-comment.functions";
 type Product = CatalogProductDto;
 type PendingAction = { type: "favorite" | "share" | "buy"; productId: string };
 
@@ -63,6 +64,7 @@ function LookImage({ person, product, generated, comparison = false }: { person:
 function ShopLook() {
   const { product: selectedProductId } = Route.useSearch();
   const loadCatalog = useServerFn(listCatalogProducts);
+  const requestStylistComment = useServerFn(analyseGeneratedLook);
   const [products, setProducts] = useState<Product[]>([]);
   const [audience, setAudience] = useState<"men" | "women" | null>(null);
   const [catalogError, setCatalogError] = useState("");
@@ -75,6 +77,9 @@ function ShopLook() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [generated, setGenerated] = useState<Record<string, string>>({});
+  const [stylistComments, setStylistComments] = useState<Record<string, string>>({});
+  const [stylistLoading, setStylistLoading] = useState<string | null>(null);
+  const [stylistErrors, setStylistErrors] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState<string | null>(null);
   const [generationError, setGenerationError] = useState("");
   const [activeId, setActiveId] = useState("");
@@ -105,7 +110,7 @@ function ShopLook() {
 
   function applyPhoto(file: File, url: string) {
     setAudience(null);
-    setError(""); setPhoto(url); setPhotoFile(file); setGenerated({}); setFavorites([]); setGenerationError("");
+    setError(""); setPhoto(url); setPhotoFile(file); setGenerated({}); setStylistComments({}); setStylistErrors({}); setFavorites([]); setGenerationError("");
   }
 
   function upload(event: ChangeEvent<HTMLInputElement>) {
@@ -231,6 +236,15 @@ function ShopLook() {
       await nextImage.decode();
       setGenerated((current) => ({ ...current, [product.id]: result.image as string }));
       setActiveId(product.id);
+      setStylistLoading(product.id);
+      setStylistErrors((current) => { const next = { ...current }; delete next[product.id]; return next; });
+      void requestStylistComment({ data: { lookImage: result.image, productName: product.name, retailer: product.retailer } })
+        .then((review) => {
+          if (review.ok) setStylistComments((current) => ({ ...current, [product.id]: review.comment }));
+          else setStylistErrors((current) => ({ ...current, [product.id]: review.error }));
+        })
+        .catch(() => setStylistErrors((current) => ({ ...current, [product.id]: "Your stylist could not review this look right now." })))
+        .finally(() => setStylistLoading((current) => current === product.id ? null : current));
     } catch (reason) {
       setGenerationError(reason instanceof Error ? reason.message : "Could not make an AI look right now.");
     } finally { setGenerating(null); }
@@ -282,7 +296,7 @@ function ShopLook() {
     }
   }
 
-  function reset() { setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setGenerationError(""); setFavorites([]); setActiveId(""); setShareId(null); setMessage(""); }
+  function reset() { setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setStylistComments({}); setStylistErrors({}); setStylistLoading(null); setGenerationError(""); setFavorites([]); setActiveId(""); setShareId(null); setMessage(""); }
 
   return <ShopLookShell>
     <header className="flex h-16 items-center justify-between border-b border-border px-5">
@@ -313,7 +327,8 @@ function ShopLook() {
     {view === "try" && active && <section className="pb-12">
        <div className="px-5 pb-4 pt-6"><p className="text-xs font-semibold uppercase tracking-widest text-primary">Your style studio</p><h1 className="mt-1 font-display text-4xl">Try a new look</h1></div>
          <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your ShopLook…</div>}</div>
-          <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{productBrand(active.name)}</h2><p className="text-sm text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
+           <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{productBrand(active.name)}</h2><p className="text-sm text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id]} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from favorites` : `Favorite ${active.name}`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}><Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} /></Button></div>
+           {generated[active.id] && <div className="mx-5 mt-4 border-y border-border py-4"><div className="flex items-center gap-2 text-primary"><Sparkles className="size-4" /><h3 className="text-sm font-semibold">Stylist's take</h3></div>{stylistLoading === active.id ? <p role="status" className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Reviewing your look…</p> : stylistComments[active.id] ? <p className="mt-2 text-sm leading-6">{stylistComments[active.id]}</p> : stylistErrors[active.id] ? <p role="alert" className="mt-2 text-sm text-muted-foreground">{stylistErrors[active.id]}</p> : null}</div>}
           {generationError && <div className="px-5 pt-3"><p role="alert" className="text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p></div>}
       <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Create more looks</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
           <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{visibleProducts.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 pt-2 text-xs font-medium">{productBrand(product.name)}</span><span className="block w-full truncate px-2 text-[11px] text-muted-foreground">{product.retailer}</span><span className="w-full px-2 pb-2 text-xs">₹{product.price.toLocaleString("en-IN")}</span></Button>)}</div>

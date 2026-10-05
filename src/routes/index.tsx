@@ -204,6 +204,7 @@ function ShopLook() {
 
   async function openShare(product: Product) {
     if (!await requireSignIn({ type: "share", productId: product.id })) return;
+    setMessage("");
     setShareId(product.id);
   }
 

@@ -31,3 +31,4 @@
 - [x] Shorten the look-generation status to “Creating your ShopLook…”
 - [x] Add upload-or-selfie photo capture and remove the top-right refresh control.
 - [x] Add an AI stylist comment beneath each completed ShopLook.
+- [x] Make Instagram and WhatsApp sharing destination-specific, with the generated look attached through native sharing and a clear download fallback.

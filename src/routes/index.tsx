@@ -88,7 +88,7 @@ function ShopLook() {
   const person = photo ?? "";
   const active = products.find((product) => product.id === activeId) ?? firstProduct;
   const shareProduct = products.find((product) => product.id === shareId);
-  const comparison = favorites.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product));
+  const comparison = favorites.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product && generated[product.id]));
 
   useEffect(() => () => { if (photo?.startsWith("blob:")) URL.revokeObjectURL(photo); }, [photo]);
 
@@ -99,7 +99,7 @@ function ShopLook() {
       setError("Choose a JPG, PNG or WebP photo under 8 MB."); event.target.value = ""; return;
     }
     setAudience(null);
-    setError(""); setPhoto(URL.createObjectURL(file)); setPhotoFile(file); setGenerated({}); setGenerationError("");
+    setError(""); setPhoto(URL.createObjectURL(file)); setPhotoFile(file); setGenerated({}); setFavorites([]); setGenerationError("");
     event.target.value = "";
   }
 
@@ -246,7 +246,7 @@ function ShopLook() {
           <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{visibleProducts.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 pt-2 text-xs font-medium">{productBrand(product.name)}</span><span className="block w-full truncate px-2 text-[11px] text-muted-foreground">{product.retailer}</span><span className="w-full px-2 pb-2 text-xs">₹{product.price.toLocaleString("en-IN")}</span></Button>)}</div>
           <div className="mt-5 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button className="h-11 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
        <p className="mt-2 px-5 text-center text-[11px] text-muted-foreground">Buy opens the product at {active.retailer}. Price and availability may change.</p>
-         <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={favorites.length === 0} onClick={() => setView("compare")}>Compare my looks ({favorites.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{favorites.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
+         <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={comparison.length === 0} onClick={() => setView("compare")}>Compare my looks ({comparison.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{comparison.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
     </section>}
 
     {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>

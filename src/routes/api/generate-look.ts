@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createHash } from "node:crypto";
 
 const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-const attempts = new Map<string, number>();
 
 export const Route = createFileRoute("/api/generate-look")({
   server: {
@@ -20,10 +20,12 @@ export const Route = createFileRoute("/api/generate-look")({
         if (!(person instanceof File) || !(garment instanceof File) || !imageTypes.has(person.type) || !imageTypes.has(garment.type) || person.size > 8_000_000 || garment.size > 4_000_000 || typeof note !== "string" || note.length > 280) {
           return Response.json({ message: "Choose valid JPG, PNG or WebP images and try again." }, { status: 400 });
         }
-        const client = request.headers.get("cf-connecting-ip") ?? "preview";
-        const last = attempts.get(client) ?? 0;
-        if (Date.now() - last < 3_000) return Response.json({ message: "Please wait a moment before making another AI look." }, { status: 429 });
-        attempts.set(client, Date.now());
+        const client = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "preview";
+        const hash = createHash("sha256").update(`${process.env["LOVABLE_CRON_SECRET"] ?? "shoplook"}:${client}`).digest("hex");
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const cooldown = await supabaseAdmin.rpc("claim_ai_generation_cooldown", { _client_hash: hash });
+        if (cooldown.error) return Response.json({ message: "AI looks are temporarily unavailable. Please try again shortly." }, { status: 503 });
+        if (!cooldown.data) return Response.json({ message: "Please wait a moment before making another AI look." }, { status: 429 });
 
         const encode = async (file: File) => Buffer.from(await file.arrayBuffer()).toString("base64");
         try {

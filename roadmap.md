@@ -4,7 +4,7 @@
 - [x] Show a generated virtual look after explicit request, with tappable catalog choices and the original photo as a pending/failure fallback.
 - [x] Add favorites, scrollable four-up comparison, share handoffs, and retailer shopping search.
 - [x] Verify the demo journey on mobile and desktop.
-- [ ] Verify creating and revisiting a saved look (signed-in empty gallery checked; current demo has no Save look action).
+- [x] Add Save look, sign-in continuation, private storage, gallery reload, and a saved-look detail view; verify saving and revisiting while signed in.
 - [x] Rewire opt-in image generation through OpenRouter, retaining the original photo while a look is pending or unavailable.
 - [x] Securely connect an OpenRouter key and verify generation on desktop; phone flow also checked.
 - [x] Remove the misnamed OpenRouter credential from the Google key slot to prevent accidental use.
@@ -14,4 +14,16 @@
 - [x] Generate the selected outfit directly when its catalog photo is tapped; remove the redundant try-on button and verify it.
 - [x] Bring the distant teal comparison portrait closer and label generated images ShopLook.ai.
 - [x] Keep the current generated look visible while the next product generates, switching only when its look is ready.
-- [ ] Replace Amazon India search links with exact product pages when the shop URLs are provided (blocked: product URLs not provided).
+- [x] Add the supplied TAGAS jacket exact Amazon page and two new dress catalogue photos with search fallbacks.
+- [x] Require Google sign-in before heart, save, share, or shopping actions, then continue the selected action after sign-in.
+- [x] Replace the sample catalogue with 10 men's and 10 women's products, hosted photos, current INR prices, and exact retailer pages.
+- [x] Add Google and passwordless email-code sign-in, private saved looks, product snapshots, and reliable profile creation.
+- [x] Move AI generation throttling into the database so it works across app instances.
+- [ ] Connect and publish shoplook.ai (blocked: domain-owner access and DNS confirmation are required).
+- [x] Offer an opt-in OpenRouter photo-based catalogue suggestion, without inferring gender identity or sending the photo on upload.
+- [x] Rename Create/Discover to Look/Shop, add the searchable catalogue grid, and send selected products to the front of the Look queue.
+- [ ] Replace the demo catalogue with 10 men's and 10 women's verified apparel from CK, Louis Philippe, USPA, Levi's, SHEIN, and Moomaya using Apify (blocked: Apify returned “Monthly usage hard limit exceeded”; owner chose to increase the Apify limit). Preserve the existing batch until a complete replacement is validated.
+- [x] Simplify the sharing pop-up copy and remove the extra link and app explanation.
+- [x] Move the Women/Men selector above the style prompt and rename the main action to “Create my ShopLook.”
+- [x] Rename the main action to “Create your Shop.”
+- [x] Rename the main action to “Create your ShopLook.”

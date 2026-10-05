@@ -27,3 +27,4 @@
 - [x] Move the Women/Men selector above the style prompt and rename the main action to “Create my ShopLook.”
 - [x] Rename the main action to “Create your Shop.”
 - [x] Rename the main action to “Create your ShopLook.”
+- [x] Replace labeled Share and Buy buttons in look comparison with compact action icons.

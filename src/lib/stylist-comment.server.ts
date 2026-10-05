@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createLovableAiGatewayRunIdFetch } from "./ai-run-id.server.ts";
 
 const commentSchema = z.object({
-  comment: z.string(),
+  comment: z.string().max(240),
 });
 
 type StylistCommentInput = {
@@ -50,9 +50,9 @@ export async function createStylistComment(input: StylistCommentInput) {
       text: [
         "Review the complete generated outfit as an expert, inclusive personal stylist.",
         `The featured item is ${input.productName}, available at ${input.retailer}.`,
-        "Write exactly two short sentences in plain English: first explain specifically what works in the visible look, then suggest one practical improvement using color, proportion, layering, footwear, or accessories.",
+        "Write exactly two crisp, punchy sentences in plain English: first say what works in the visible look, then give one practical styling tweak.",
         "Base the assessment only on visible styling details. Do not infer identity, gender, body measurements, personality, health, or attractiveness. Do not discuss image-generation quality, fit accuracy, or whether the image is real.",
-        "Keep the full comment under 55 words and make it helpful rather than flattering by default.",
+        "Keep the full comment under 35 words. Add a light, clever turn of phrase when it feels natural, but never force a joke, pun, cliché, or exaggerated praise.",
       ].join("\n"),
     },
     { type: "file", data: { type: "url", url: new URL(input.lookImage) }, mediaType: input.lookImage.slice(5, input.lookImage.indexOf(";")) },

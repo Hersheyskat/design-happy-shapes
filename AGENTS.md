@@ -11,5 +11,3 @@
 
 - Keep the first screen's photo local until the shopper explicitly requests a virtual look; while generation is pending or unavailable, show only their original photo, never a side-by-side or a misleading garment overlay.
 - Keep OpenRouter-powered image generation opt-in and server-side; shopper photos only leave the browser after explicit action, while the illustrative demo stays available without a credential.
-- Save generated looks only after an explicit action, using authenticated private storage and the existing owner-scoped saved-look records, because shopper images must remain private by default.
-- Send the original shopper photo, selected product name, and its photo for each virtual generation; infer garment type only from the product name and replace the corresponding entire garment, because partial edits leave mismatched sleeves or hem panels.

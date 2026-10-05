@@ -17,7 +17,6 @@ import { Route as SavedRouteImport } from './routes/saved'
 import { Route as ApiGenerateLookRouteImport } from './routes/api/generate-look'
 import { Route as LookLookIdRouteImport } from './routes/look.$lookId'
 import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
-import { Route as SavedLookLookIdRouteImport } from './routes/saved-look.$lookId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -59,11 +58,6 @@ const ProfileHandleRoute = ProfileHandleRouteImport.update({
   path: '/$handle',
   getParentRoute: () => ProfileRoute,
 } as any)
-const SavedLookLookIdRoute = SavedLookLookIdRouteImport.update({
-  id: '/saved-look/$lookId',
-  path: '/saved-look/$lookId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -74,7 +68,6 @@ export interface FileRoutesByFullPath {
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
-  '/saved-look/$lookId': typeof SavedLookLookIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -85,7 +78,6 @@ export interface FileRoutesByTo {
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
-  '/saved-look/$lookId': typeof SavedLookLookIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -97,7 +89,6 @@ export interface FileRoutesById {
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
-  '/saved-look/$lookId': typeof SavedLookLookIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -110,7 +101,6 @@ export interface FileRouteTypes {
     | '/api/generate-look'
     | '/look/$lookId'
     | '/profile/$handle'
-    | '/saved-look/$lookId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -121,7 +111,6 @@ export interface FileRouteTypes {
     | '/api/generate-look'
     | '/look/$lookId'
     | '/profile/$handle'
-    | '/saved-look/$lookId'
   id:
     | '__root__'
     | '/'
@@ -132,7 +121,6 @@ export interface FileRouteTypes {
     | '/api/generate-look'
     | '/look/$lookId'
     | '/profile/$handle'
-    | '/saved-look/$lookId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -143,7 +131,6 @@ export interface RootRouteChildren {
   SavedRoute: typeof SavedRoute
   ApiGenerateLookRoute: typeof ApiGenerateLookRoute
   LookLookIdRoute: typeof LookLookIdRoute
-  SavedLookLookIdRoute: typeof SavedLookLookIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -204,13 +191,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileHandleRouteImport
       parentRoute: typeof ProfileRoute
     }
-    '/saved-look/$lookId': {
-      id: '/saved-look/$lookId'
-      path: '/saved-look/$lookId'
-      fullPath: '/saved-look/$lookId'
-      preLoaderRoute: typeof SavedLookLookIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -233,7 +213,6 @@ const rootRouteChildren: RootRouteChildren = {
   SavedRoute: SavedRoute,
   ApiGenerateLookRoute: ApiGenerateLookRoute,
   LookLookIdRoute: LookLookIdRoute,
-  SavedLookLookIdRoute: SavedLookLookIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

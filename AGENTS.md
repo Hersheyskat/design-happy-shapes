@@ -17,3 +17,4 @@
 - Suggest a catalogue from visible clothing style only after a separate opt-in action; never infer gender identity or transmit a shopper photo on selection, and always allow manual override.
 - Pass Shop-to-Look product selections by catalogue product ID in the Look page URL, so the handoff survives refresh without storing shopper data.
 - Treat Node's abortIncoming socket-close error as a disconnected request, not an app crash, while preserving reporting for other server errors.
+- Generate one concise, image-grounded stylist comment after each completed ShopLook, without delaying or replacing the generated image.

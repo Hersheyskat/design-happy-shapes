@@ -18,4 +18,4 @@
 - Pass Shop-to-Look product selections by catalogue product ID in the Look page URL, so the handoff survives refresh without storing shopper data.
 - Treat Node's abortIncoming socket-close error as a disconnected request, not an app crash, while preserving reporting for other server errors.
 - Generate one concise, image-grounded stylist comment after each completed ShopLook, without delaying or replacing the generated image.
-- Share generated looks as image files through the device share sheet, with a private local download fallback when file sharing is unavailable.
+- Share Instagram looks as private image files through the device share sheet with a local download fallback; open WhatsApp directly with a ShopLook text and page link.

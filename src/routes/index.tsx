@@ -88,7 +88,7 @@ function ShopLook() {
   const person = photo ?? "";
   const active = products.find((product) => product.id === activeId) ?? firstProduct;
   const shareProduct = products.find((product) => product.id === shareId);
-  const comparison = favorites.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product));
+  const comparison = favorites.map((id) => products.find((product) => product.id === id)).filter((product): product is Product => Boolean(product && generated[product.id]));
 
   useEffect(() => () => { if (photo?.startsWith("blob:")) URL.revokeObjectURL(photo); }, [photo]);
 
@@ -99,7 +99,7 @@ function ShopLook() {
       setError("Choose a JPG, PNG or WebP photo under 8 MB."); event.target.value = ""; return;
     }
     setAudience(null);
-    setError(""); setPhoto(URL.createObjectURL(file)); setPhotoFile(file); setGenerated({}); setGenerationError("");
+    setError(""); setPhoto(URL.createObjectURL(file)); setPhotoFile(file); setGenerated({}); setFavorites([]); setGenerationError("");
     event.target.value = "";
   }
 

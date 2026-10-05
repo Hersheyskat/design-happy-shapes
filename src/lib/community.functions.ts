@@ -17,7 +17,7 @@ const saveInput = z.object({
   catalogProductId: z.string().uuid().optional(),
   styleNote: z.string().max(280).default(""),
   mood: z.enum(styleMoods),
-  advice: z.object({ headline: z.string().max(120), summary: z.string().max(600), colors: z.array(colorSchema).length(4), adjustments: z.array(adjustmentSchema).length(3), shoppingItems: z.array(shoppingItemSchema).max(4) }),
+  stylistComment: z.string().trim().min(1).max(240),
 });
 
 export const listCatalogProducts = createServerFn({ method: "GET" }).handler(async (): Promise<CatalogProductDto[]> => {
@@ -75,13 +75,12 @@ export const saveMyLook = createServerFn({ method: "POST" })
     const item = catalog?.data;
     const inserted = await context.supabase.from("saved_looks").insert({
       user_id: context.userId, shopper_image_path: data.shopperImagePath, product_image_path: data.productImagePath,
-      product_url: item?.product_url ?? data.productUrl, catalog_product_id: item?.id ?? null, product_name: item?.product_name ?? null, product_retailer: item?.retailer ?? null, product_price: item?.price ?? null, product_currency: item?.currency ?? null, style_note: data.styleNote, mood: data.mood, headline: data.advice.headline, summary: data.advice.summary,
-      colors: data.advice.colors as Json, adjustments: data.advice.adjustments as Json,
+      product_url: item?.product_url ?? data.productUrl, catalog_product_id: item?.id ?? null, product_name: item?.product_name ?? null, product_retailer: item?.retailer ?? null, product_price: item?.price ?? null, product_currency: item?.currency ?? null, style_note: data.styleNote, mood: data.mood, headline: item?.product_name ?? "My ShopLook", summary: data.stylistComment,
+      colors: [] as Json, adjustments: [] as Json,
     }).select("id").single();
     if (inserted.error) throw new Error(inserted.error.message);
     const rows = [
       ...((item?.product_url ?? data.productUrl) ? [{ look_id: inserted.data.id, user_id: context.userId, label: item?.product_name ?? "Original product", search_term: "Original product", destination_url: (item?.product_url ?? data.productUrl)!, source: "submitted", display_order: 0 }] : []),
-      ...data.advice.shoppingItems.map((item, index) => ({ look_id: inserted.data.id, user_id: context.userId, label: item.label, search_term: item.searchTerm, destination_url: item.destinationUrl, source: "suggested", display_order: index + 1 })),
     ];
     if (rows.length) {
       const items = await context.supabase.from("saved_items").insert(rows);

@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Compact the Look photo and opening upload, add a two-column catalogue on both screens, and verify scrolling during creation and full-size viewing.
+
 - [x] Add the demo-first photo upload and optional style note.
 - [x] Show a generated virtual look after explicit request, with tappable catalog choices and the original photo as a pending/failure fallback.
 - [x] Add favorites, scrollable four-up comparison, share handoffs, and retailer shopping search.

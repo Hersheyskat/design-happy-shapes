@@ -72,9 +72,9 @@ export function ShopLookResult(props: Props) {
     <div className="px-5 pt-5"><Button variant="outline" className="h-11 w-full" disabled={props.comparisonCount === 0} onClick={props.onCompare}>Compare my looks ({props.comparisonCount}) <ArrowRight /></Button></div>
 
     <Dialog open={imageOpen} onOpenChange={setImageOpen}>
-      <DialogContent aria-describedby={undefined} className="h-dvh max-h-dvh w-screen max-w-none gap-0 rounded-none border-0 bg-card p-4 sm:rounded-none [&>button]:z-10 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100">
+      <DialogContent aria-describedby={undefined} className="h-dvh max-h-dvh w-full max-w-[430px] min-h-0 overflow-hidden gap-0 rounded-none border-0 bg-card p-2 sm:rounded-none [&>button]:z-10 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100">
         <DialogTitle className="sr-only">Your ShopLook full-screen</DialogTitle>
-        <img src={props.imageUrl} alt={completed ? `Your ShopLook wearing ${product.name}` : "Your original photo"} className="h-full max-h-[calc(100dvh-2rem)] w-full object-contain" />
+        <img src={props.imageUrl} alt={completed ? `Your ShopLook wearing ${product.name}` : "Your original photo"} className="h-full min-h-0 max-h-[calc(100dvh-1rem)] w-full min-w-0 object-contain" />
       </DialogContent>
     </Dialog>
   </section>;

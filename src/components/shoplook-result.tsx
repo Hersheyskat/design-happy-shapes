@@ -61,10 +61,10 @@ export function ShopLookResult(props: Props) {
 
     {props.generationError && <p role="alert" className="px-5 pb-3 text-xs text-destructive">{props.generationError} Tap the product again to retry.</p>}
 
-    <section className="border-t border-border pt-4" aria-labelledby="try-another-heading">
-      <div className="flex items-center justify-between px-5"><h2 id="try-another-heading" className="font-display text-2xl">Try another look</h2><ArrowRight className="size-4 shrink-0 text-primary" aria-hidden="true" /></div>
-      <div className="mt-3 px-5">
-        <label htmlFor="look-clothing-search" className="mb-1.5 block text-xs font-medium">Search clothing</label>
+    <section className="border-t border-border pt-3" aria-labelledby="try-another-heading">
+      <div className="flex items-center justify-between px-5"><h2 id="try-another-heading" className="font-display text-lg">Try another look</h2><ArrowRight className="size-4 shrink-0 text-primary" aria-hidden="true" /></div>
+      <div className="mt-2 px-5">
+        <label htmlFor="look-clothing-search" className="sr-only">Search clothing</label>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input id="look-clothing-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Shirts, jackets, dresses…" className="h-10 bg-background pl-9 pr-10 [&::-webkit-search-cancel-button]:appearance-none" />

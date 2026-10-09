@@ -69,8 +69,9 @@ function ShopLook() {
   }, [loadCatalog]);
   const selectedProduct = products.find((product) => product.id === selectedProductId);
   useEffect(() => { if (selectedProduct) setAudience(selectedProduct.audience); }, [selectedProduct]);
-  const visibleProducts = products.filter((product) => product.audience === audience).sort((left, right) => left.id === selectedProductId ? -1 : right.id === selectedProductId ? 1 : 0);
   const [chosenProductId, setChosenProductId] = useState("");
+  const queuedProductId = chosenProductId || selectedProductId;
+  const visibleProducts = products.filter((product) => product.audience === audience).sort((left, right) => left.id === queuedProductId ? -1 : right.id === queuedProductId ? 1 : 0);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const firstProduct = visibleProducts.find((product) => product.id === chosenProductId) ?? visibleProducts[0];
   const women = products.filter((product) => product.audience === "women");

@@ -20,4 +20,4 @@
 - Generate one concise, image-grounded stylist comment after each completed ShopLook, without delaying or replacing the generated image.
 - Share Instagram looks as private image files through the device share sheet with a local download fallback; open WhatsApp directly with a ShopLook text and page link.
 
-- Scope compact, viewport-aware image sizing to the main Look preview; preserve comparison proportions so shrinking the preview does not change shortlist framing.
+- Keep the result presentation isolated from generation and engagement logic, with a viewport-aware image hero and full-screen viewer; preserve comparison image proportions so result sizing never changes shortlist framing.

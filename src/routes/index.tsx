@@ -7,6 +7,7 @@ import { z } from "zod";
 import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
 import { ShopLookShell } from "@/components/shoplook-shell";
+import { ShopLookResult } from "@/components/shoplook-result";
 import { supabase } from "@/integrations/supabase/client";
 import { listCatalogProducts, saveMyLook } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
@@ -50,12 +51,12 @@ function PreviewPhoto({ src, alt }: { src: string; alt: string }) {
   </div>;
 }
 
-function LookImage({ person, product, generated, comparison = false, compact = false }: { person: string; product: Product; generated?: string | undefined; comparison?: boolean; compact?: boolean }) {
+function LookImage({ person, product, generated, comparison = false, hero = false }: { person: string; product: Product; generated?: string | undefined; comparison?: boolean; hero?: boolean }) {
   const [generatedFailed, setGeneratedFailed] = useState(false);
   useEffect(() => setGeneratedFailed(false), [generated]);
   const showGenerated = Boolean(generated && !generatedFailed);
-  return <div className={`relative w-full overflow-hidden bg-surface ${compact ? "h-[min(35dvh,calc(100dvh-490px))] min-h-[140px] max-h-[380px]" : "aspect-[2/3]"}`}>
-    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className={`size-full ${compact ? "object-contain" : "object-cover"} ${comparison && product.id === "teal" ? "scale-125" : ""}`} /></div> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" />}
+  return <div className={`relative w-full overflow-hidden bg-surface ${hero ? "h-[clamp(240px,40dvh,540px)]" : "aspect-[2/3]"}`}>
+    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className={`size-full ${hero ? "object-contain" : "object-cover"} ${comparison && product.id === "teal" ? "scale-125" : ""}`} /></div> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" />}
     <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold text-overlay-foreground">{showGenerated ? "ShopLook.ai" : "Your original photo"}</span>
     {generatedFailed && <span role="alert" className="absolute right-3 top-3 rounded bg-overlay px-2 py-1 text-xs text-overlay-foreground">AI image unavailable · showing your photo</span>}
   </div>;
@@ -383,7 +384,7 @@ function ShopLook() {
   function reset() { setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setStylistComments({}); setStylistErrors({}); setStylistLoading(null); setGenerationError(""); setFavorites([]); setSavedLooks({}); setActiveId(""); setShareId(null); setMessage(""); }
 
   return <ShopLookShell>
-    <header className="flex h-16 items-center justify-between border-b border-border px-5">
+    <header className={`flex h-16 items-center justify-between border-b border-border px-5 ${view === "try" ? "bg-card" : ""}`}>
       {view === "start" ? <span className="w-10" /> : <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => setView(view === "compare" ? "try" : "start")}><ArrowLeft /></Button>}
       <Button variant="ghost" onClick={reset} className="font-display text-2xl font-normal">ShopLook</Button>
       <span className="w-10" />
@@ -408,16 +409,28 @@ function ShopLook() {
         <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your ShopLook <Sparkles /></Button>
     </section>}
 
-    {view === "try" && active && <section className="pb-12">
-         <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} compact />{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your ShopLook…</div>}</div>
-           <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{productBrand(active.name)}</h2><p className="text-sm text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id] || !stylistComments[active.id] || savingIds.includes(active.id)} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from comparison` : `Save ${active.name} to my looks`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}>{savingIds.includes(active.id) ? <LoaderCircle className="animate-spin" /> : <Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} />}</Button></div>
-            <div className="mt-4 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button className="h-11 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
-           {generated[active.id] && <div className="mx-5 mt-3 border-y border-border py-3"><div className="flex items-center gap-2 text-primary"><Sparkles className="size-4" /><h3 className="text-sm font-semibold">Stylist's take</h3></div>{stylistLoading === active.id ? <p role="status" className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Reviewing your look…</p> : stylistComments[active.id] ? <p className="mt-2 text-sm leading-6">{stylistComments[active.id]}</p> : stylistErrors[active.id] ? <p role="alert" className="mt-2 text-sm text-muted-foreground">{stylistErrors[active.id]}</p> : null}</div>}
-          {generationError && <div className="px-5 pt-3"><p role="alert" className="text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p></div>}
-      <div className="mt-4 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Create more looks</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
-          <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{visibleProducts.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 pt-2 text-xs font-medium">{productBrand(product.name)}</span><span className="block w-full truncate px-2 text-[11px] text-muted-foreground">{product.retailer}</span><span className="w-full px-2 pb-2 text-xs">₹{product.price.toLocaleString("en-IN")}</span></Button>)}</div>
-         <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={comparison.length === 0} onClick={() => setView("compare")}>Compare my looks ({comparison.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{comparison.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
-    </section>}
+    {view === "try" && active && <ShopLookResult
+      product={active}
+      products={visibleProducts}
+      image={<LookImage person={person} product={active} generated={generated[active.id]} hero />}
+      imageUrl={generated[active.id] ?? person}
+      completed={Boolean(generated[active.id])}
+      generating={generating}
+      saving={savingIds.includes(active.id)}
+      selected={favorites.includes(active.id)}
+      canSave={Boolean(generated[active.id] && stylistComments[active.id])}
+      comment={stylistComments[active.id]}
+      commentLoading={stylistLoading === active.id}
+      commentError={stylistErrors[active.id]}
+      generationError={generationError}
+      comparisonCount={comparison.length}
+      brand={productBrand}
+      onShare={() => void openShare(active)}
+      onSave={() => void favoriteLook(active)}
+      onBuy={() => void openShop(active)}
+      onSelect={selectProduct}
+      onCompare={() => setView("compare")}
+    />}
 
     {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>
          <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} comparison /><div className="flex min-h-14 items-center justify-between gap-1 py-2"><div className="min-w-0"><h2 className="truncate font-display text-lg">{productBrand(product.name)}</h2><p className="truncate text-xs text-muted-foreground">{product.retailer} · ₹{product.price.toLocaleString("en-IN")}</p></div><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} title="Remove from comparison" onClick={() => void favoriteLook(product)}><Heart className="fill-primary text-primary" /></Button></div><div className="flex items-center justify-center gap-3"><Button variant="ghost" size="icon" className="size-10" aria-label={`Share ${product.name}`} title="Share" onClick={() => void openShare(product)}><Share2 /></Button><Button variant="ghost" size="icon" className="size-10 text-primary" aria-label={`${product.productUrl ? "Buy" : "Search for"} ${product.name}`} title={product.productUrl ? "Buy" : "Search"} onClick={() => void openShop(product)}><ShoppingBag /></Button></div></article>)}</div>

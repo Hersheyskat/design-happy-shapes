@@ -12,7 +12,7 @@ import { listCatalogProducts, saveMyLook } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 import { analyseGeneratedLook } from "@/lib/stylist-comment.functions";
 type Product = CatalogProductDto;
-type PendingAction = { type: "favorite" | "share" | "buy"; productId: string };
+type PendingAction = { type: "generate" | "favorite" | "share" | "buy"; productId: string };
 
 export const Route = createFileRoute("/")({
   validateSearch: (search) => z.object({ product: z.string().optional(), mood: z.string().optional() }).catch({}).parse(search),
@@ -69,11 +69,12 @@ function ShopLook() {
   const [products, setProducts] = useState<Product[]>([]);
   const [audience, setAudience] = useState<"men" | "women" | null>(null);
   const [catalogError, setCatalogError] = useState("");
+  const [catalogReady, setCatalogReady] = useState(false);
   const catalogRequested = useRef(false);
   useEffect(() => {
     if (catalogRequested.current) return;
     catalogRequested.current = true;
-    void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again."));
+    void loadCatalog().then(setProducts).catch(() => setCatalogError("Could not load products. Please reload to try again.")).finally(() => setCatalogReady(true));
   }, [loadCatalog]);
   const selectedProduct = products.find((product) => product.id === selectedProductId);
   useEffect(() => { if (selectedProduct) setAudience(selectedProduct.audience); }, [selectedProduct]);
@@ -253,11 +254,17 @@ function ShopLook() {
       if (lookUpload.error) throw lookUpload.error;
       uploadedPaths.push(lookPath);
 
-      const productBlob = await (await fetch(product.image)).blob();
-      const productPath = `${folder}/product.${productBlob.type === "image/webp" ? "webp" : "jpg"}`;
-      const productUpload = await supabase.storage.from("shoplook-media").upload(productPath, productBlob, { contentType: productBlob.type || "image/jpeg" });
-      if (productUpload.error) throw productUpload.error;
-      uploadedPaths.push(productPath);
+      let productPath: string | null = null;
+      const productResponse = await fetch(product.image);
+      if (productResponse.ok) {
+        const productBlob = await productResponse.blob();
+        if (productBlob.type.startsWith("image/")) {
+          productPath = `${folder}/product.${productBlob.type === "image/webp" ? "webp" : "jpg"}`;
+          const productUpload = await supabase.storage.from("shoplook-media").upload(productPath, productBlob, { contentType: productBlob.type || "image/jpeg" });
+          if (productUpload.error) throw productUpload.error;
+          uploadedPaths.push(productPath);
+        }
+      }
 
       const saved = await persistLook({ data: {
         shopperImagePath: lookPath,
@@ -281,23 +288,37 @@ function ShopLook() {
     }
   }
 
+  async function requestGenerate(product: Product) {
+    setView("try");
+    void generateLook(product);
+  }
+
   function selectProduct(id: string) {
     const product = products.find((item) => item.id === id);
     if (!product || generating) return;
     setGenerationError("");
     if (generated[id]) setActiveId(id);
-    else void generateLook(product);
+    else void requestGenerate(product);
   }
 
   async function generateLook(product: Product) {
     if (generating || !photoFile) return;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
     setGenerating(product.id); setGenerationError("");
     try {
       const garmentBlob = await (await fetch(product.image)).blob();
       const garment = new File([garmentBlob], `${product.id}.${garmentBlob.type === "image/webp" ? "webp" : "jpg"}`, { type: garmentBlob.type });
       const form = new FormData();
       form.append("person", photoFile); form.append("garment", garment); form.append("note", "");
-      const response = await fetch("/api/generate-look", { method: "POST", body: form });
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      const response = await fetch("/api/generate-look", { method: "POST", headers, body: form });
+      if (response.status === 401) {
+        setPendingAction({ type: "generate", productId: product.id });
+        setAuthOpen(true);
+        setGenerationError("Sign in to create more looks.");
+        return;
+      }
       const result = await response.json().catch(() => ({})) as { image?: string; message?: string };
       if (!response.ok || !result.image) throw new Error(result.message ?? "OpenRouter could not make this look right now.");
       const nextImage = new Image();
@@ -360,6 +381,7 @@ function ShopLook() {
     const product = products.find((item) => item.id === action.productId);
     if (!product) { setPendingAction(null); return; }
     setPendingAction(null);
+    if (action.type === "generate") { setView("try"); void generateLook(product); }
     if (action.type === "favorite") void favoriteLook(product);
     if (action.type === "share") setShareId(product.id);
     if (action.type === "buy") window.open(shopUrl(product), "_blank", "noopener,noreferrer");
@@ -392,7 +414,7 @@ function ShopLook() {
     {view === "start" && <section className="px-5 pb-12 pt-7">
       <p className="text-xs font-semibold uppercase tracking-widest text-primary">AI-Powered Shopping Agent</p>
       <h1 className="mt-3 font-display text-5xl leading-none">Shop your look.</h1>
-      <p className="mt-3 text-sm leading-6 text-muted-foreground">Fashion shopping made personal and fun.</p>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">Fashion shopping made personal and fun. Try two looks free, then sign in to keep creating.</p>
       <div className="mt-6 overflow-hidden rounded-md bg-surface">
         <Button type="button" variant="ghost" className="relative aspect-[5/4] h-auto w-full rounded-none p-0" onClick={() => setPhotoChoiceOpen(true)} aria-label={photo ? "Change your photo" : "Add your photo"}>
           {photo ? <img src={photo} alt="Your photo preview" className="size-full object-cover" /> : <div className="flex size-full flex-col items-center justify-center gap-3 bg-surface"><span className="grid size-14 place-items-center rounded-full bg-background text-primary"><ImagePlus className="size-6" /></span><span className="font-display text-2xl">Add your photo</span><span className="text-xs text-muted-foreground">Choose a clear picture of yourself</span></div>}
@@ -402,10 +424,11 @@ function ShopLook() {
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" className="sr-only" onChange={upload} />
         <h2 className="mt-5 text-sm font-semibold">Choose one</h2>
         <div className="mt-2 flex gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Woman</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Man</Button>{audience && <span className="self-center text-xs text-muted-foreground">{visibleProducts.length} products</span>}</div>
+       {audience && catalogReady && !catalogError && visibleProducts.length === 0 && <p className="mt-3 text-sm text-muted-foreground">No products in this catalogue yet.</p>}
        {selectedProduct && selectedProduct.audience === audience && <div className="mt-4 flex items-center gap-3 rounded-md border border-primary bg-surface p-2"><img src={selectedProduct.image} alt="" className="size-14 rounded-sm object-contain" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase text-primary">First in your Look queue</p><p className="truncate text-sm font-medium">{selectedProduct.name}</p></div></div>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
-        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your ShopLook <Sparkles /></Button>
+        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; void requestGenerate(firstProduct); }}>Create your ShopLook <Sparkles /></Button>
     </section>}
 
     {view === "try" && active && <section className="pb-12">

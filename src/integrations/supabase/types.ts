@@ -157,6 +157,30 @@ export type Database = {
           },
         ]
       }
+      guest_look_quotas: {
+        Row: {
+          created_at: string
+          generation_count: number
+          ip_hash: string
+          last_generated_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          generation_count?: number
+          ip_hash: string
+          last_generated_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          generation_count?: number
+          ip_hash?: string
+          last_generated_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string
@@ -274,9 +298,11 @@ export type Database = {
           bio: string
           created_at: string
           display_name: string
+          first_name: string
           handle: string
           id: string
           style_preferences: string[]
+          surname: string
           updated_at: string
         }
         Insert: {
@@ -284,9 +310,11 @@ export type Database = {
           bio?: string
           created_at?: string
           display_name: string
+          first_name?: string
           handle: string
           id: string
           style_preferences?: string[]
+          surname?: string
           updated_at?: string
         }
         Update: {
@@ -294,9 +322,11 @@ export type Database = {
           bio?: string
           created_at?: string
           display_name?: string
+          first_name?: string
           handle?: string
           id?: string
           style_preferences?: string[]
+          surname?: string
           updated_at?: string
         }
         Relationships: []
@@ -473,6 +503,14 @@ export type Database = {
       claim_ai_generation_cooldown: {
         Args: { _client_hash: string }
         Returns: boolean
+      }
+      claim_guest_look_generation: {
+        Args: { _ip_hash: string; _max_count?: number }
+        Returns: number
+      }
+      release_guest_look_generation: {
+        Args: { _ip_hash: string }
+        Returns: undefined
       }
     }
     Enums: {

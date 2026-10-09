@@ -19,10 +19,17 @@ const saveInput = z.object({
   stylistComment: z.string().trim().min(1).max(240),
 });
 
+function catalogImageUrl(imagePath: string) {
+  if (imagePath.startsWith("https://") || imagePath.startsWith("http://") || imagePath.startsWith("/")) return imagePath;
+  const base = process.env["SUPABASE_URL"]?.replace(/\/$/, "");
+  const objectPath = imagePath.replace(/^catalog-media\//, "");
+  return `${base}/storage/v1/object/public/catalog-media/${objectPath}`;
+}
+
 export const listCatalogProducts = createServerFn({ method: "GET" }).handler(async (): Promise<CatalogProductDto[]> => {
   const result = await publicClient().from("catalog_products").select("id, audience, product_name, category, retailer, price, currency, image_path, product_url, refreshed_at").eq("is_active", true).eq("availability", "available").order("display_order");
   if (result.error) throw new Error("The catalogue is temporarily unavailable. Please try again.");
-  return result.data.map((row) => ({ id: row.id, audience: row.audience as "men" | "women", name: row.product_name, category: row.category, retailer: row.retailer, price: row.price, currency: row.currency, image: row.image_path, productUrl: row.product_url, refreshedAt: row.refreshed_at }));
+  return result.data.map((row) => ({ id: row.id, audience: row.audience as "men" | "women", name: row.product_name, category: row.category, retailer: row.retailer, price: row.price, currency: row.currency, image: catalogImageUrl(row.image_path), productUrl: row.product_url, refreshedAt: row.refreshed_at }));
 });
 
 function publicClient() {
@@ -54,11 +61,72 @@ function readAdvice(row: { headline: string; summary: string; colors: Json; adju
   };
 }
 
+const nameInput = z.object({
+  firstName: z.string().trim().min(1).max(30),
+  surname: z.string().trim().min(1).max(30),
+});
+
+function readText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function namesFromClaims(claims: { email?: unknown; user_metadata?: unknown }) {
+  const email = readText(claims.email) || "shopper";
+  const metadata = claims.user_metadata && typeof claims.user_metadata === "object" ? claims.user_metadata as Record<string, unknown> : {};
+  const full = readText(metadata.full_name) || readText(metadata.name);
+  const parts = full.split(/\s+/).filter(Boolean);
+  const first_name = (readText(metadata.given_name) || readText(metadata.first_name) || parts[0] || "").slice(0, 30);
+  const surname = (readText(metadata.family_name) || readText(metadata.surname) || readText(metadata.last_name) || parts.slice(1).join(" ") || "").slice(0, 30);
+  const display_name = (`${first_name} ${surname}`.trim() || full || email).slice(0, 60);
+  return { first_name, surname, display_name, email };
+}
+
+function profileName(firstName: string, surname: string) {
+  return `${firstName.trim()} ${surname.trim()}`.trim().slice(0, 60);
+}
+
 export const ensureMyProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await ensureProfile(context);
-    const result = await context.supabase.from("profiles").select("id, handle, display_name, bio, style_preferences").eq("id", context.userId).single();
+    const result = await context.supabase.from("profiles").select("id, handle, display_name, first_name, surname, bio, style_preferences").eq("id", context.userId).single();
+    if (result.error) throw new Error(result.error.message);
+    return result.data;
+  });
+
+export const saveMyName = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => nameInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await ensureProfile(context);
+    const display_name = profileName(data.firstName, data.surname);
+    const result = await context.supabase.from("profiles").update({
+      first_name: data.firstName,
+      surname: data.surname,
+      display_name,
+    }).eq("id", context.userId);
+    if (result.error) throw new Error(result.error.message);
+    return { first_name: data.firstName, surname: data.surname, display_name };
+  });
+
+const profileUpdateInput = nameInput.extend({
+  handle: z.string().trim().toLowerCase().regex(/^[a-z0-9_]{3,24}$/, "Handle must be 3–24 letters, numbers, or underscores."),
+  bio: z.string().max(240),
+});
+
+export const updateMyProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => profileUpdateInput.parse(input))
+  .handler(async ({ data, context }) => {
+    await ensureProfile(context);
+    const display_name = profileName(data.firstName, data.surname);
+    const result = await context.supabase.from("profiles").update({
+      handle: data.handle,
+      first_name: data.firstName,
+      surname: data.surname,
+      display_name,
+      bio: data.bio.trim(),
+    }).eq("id", context.userId).select("id, handle, display_name, first_name, surname, bio, style_preferences").single();
     if (result.error) throw new Error(result.error.message);
     return result.data;
   });
@@ -91,13 +159,17 @@ export const saveMyLook = createServerFn({ method: "POST" })
 async function ensureProfile(context: { supabase: SupabaseClient<Database>; userId: string; claims: { email?: unknown; user_metadata?: unknown } }) {
   const existing = await context.supabase.from("profiles").select("id").eq("id", context.userId).maybeSingle();
   if (existing.data) return;
-  const email = typeof context.claims.email === "string" ? context.claims.email : "shopper";
-  const metadata = context.claims.user_metadata;
-  const fullName = typeof metadata === "object" && metadata && "full_name" in metadata ? String(metadata.full_name) : email;
+  const { first_name, surname, display_name, email } = namesFromClaims(context.claims);
   const seed = email.split("@")[0]?.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16) || "shopper";
   for (let attempt = 0; attempt < 4; attempt++) {
     const suffix = attempt ? `_${context.userId.slice(0, 6)}${attempt}` : `_${context.userId.slice(0, 6)}`;
-    const result = await context.supabase.from("profiles").insert({ id: context.userId, handle: `${seed.length >= 3 ? seed : "shopper"}${suffix}`.slice(0, 24), display_name: fullName.slice(0, 60) });
+    const result = await context.supabase.from("profiles").insert({
+      id: context.userId,
+      handle: `${seed.length >= 3 ? seed : "shopper"}${suffix}`.slice(0, 24),
+      display_name,
+      first_name,
+      surname,
+    });
     if (!result.error || result.error.code === "23505" && (await context.supabase.from("profiles").select("id").eq("id", context.userId).maybeSingle()).data) return;
     if (result.error.code !== "23505") throw new Error(result.error.message);
   }

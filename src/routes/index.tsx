@@ -55,7 +55,7 @@ function LookImage({ person, product, generated, comparison = false, hero = fals
   const [generatedFailed, setGeneratedFailed] = useState(false);
   useEffect(() => setGeneratedFailed(false), [generated]);
   const showGenerated = Boolean(generated && !generatedFailed);
-  return <div className={`relative w-full overflow-hidden bg-surface ${hero ? "h-[clamp(240px,40dvh,540px)]" : "aspect-[2/3]"}`}>
+  return <div className={`relative w-full overflow-hidden bg-surface ${hero ? "h-[clamp(260px,48dvh,600px)]" : "aspect-[2/3]"}`}>
     {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className={`size-full ${hero ? "object-contain" : "object-cover"} ${comparison && product.id === "teal" ? "scale-125" : ""}`} /></div> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" />}
     <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold text-overlay-foreground">{showGenerated ? "ShopLook.ai" : "Your original photo"}</span>
     {generatedFailed && <span role="alert" className="absolute right-3 top-3 rounded bg-overlay px-2 py-1 text-xs text-overlay-foreground">AI image unavailable · showing your photo</span>}

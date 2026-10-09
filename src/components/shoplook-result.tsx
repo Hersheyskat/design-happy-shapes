@@ -39,15 +39,15 @@ export function ShopLookResult(props: Props) {
       {generating && <div role="status" className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-5 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your ShopLook…</div>}
     </div>
 
-    <div className="px-5 pb-4 pt-4">
+    <div className="px-5 py-3">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-        <div className="min-w-0"><h1 className="line-clamp-2 text-base font-semibold leading-6">{product.name.replace(/^Amazon Brand\s*[-–]\s*/i, "")}</h1><p className="mt-1 text-xs text-muted-foreground">{product.retailer}</p></div>
-        <p className="shrink-0 pt-0.5 text-base font-semibold text-primary">₹{product.price.toLocaleString("en-IN")}</p>
+        <div className="min-w-0"><h1 className="truncate text-sm font-semibold leading-5" title={product.name}>{props.brand(product.name)}</h1><p className="text-[11px] leading-4 text-muted-foreground">{product.retailer}</p></div>
+        <p className="shrink-0 text-sm font-semibold leading-5 text-primary">₹{product.price.toLocaleString("en-IN")}</p>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        <Button variant="outline" className="h-11 px-2" disabled={!completed} onClick={props.onShare}><Share2 /> Share</Button>
-        <Button variant="outline" className={`h-11 px-2 ${selected ? "border-primary bg-primary-soft text-primary" : ""}`} disabled={!props.canSave || saving} aria-label={selected ? `Remove ${product.name} from comparison` : `Save ${product.name} to my looks`} aria-pressed={selected} onClick={props.onSave}>{saving ? <LoaderCircle className="animate-spin" /> : <Heart className={selected ? "fill-primary" : ""} />}{saving ? "Saving" : selected ? "Saved" : "Save"}</Button>
-        <Button className="h-11 px-2" onClick={props.onBuy}><ShoppingBag /> {product.productUrl ? "Buy" : "Search"}</Button>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        <Button variant="outline" className="h-9 px-2 text-xs" disabled={!completed} onClick={props.onShare}><Share2 /> Share</Button>
+        <Button variant="outline" className={`h-9 px-2 text-xs ${selected ? "border-primary bg-primary-soft text-primary" : ""}`} disabled={!props.canSave || saving} aria-label={selected ? `Remove ${product.name} from comparison` : `Save ${product.name} to my looks`} aria-pressed={selected} onClick={props.onSave}>{saving ? <LoaderCircle className="animate-spin" /> : <Heart className={selected ? "fill-primary" : ""} />}{saving ? "Saving" : selected ? "Saved" : "Save"}</Button>
+        <Button className="h-9 px-2 text-xs" onClick={props.onBuy}><ShoppingBag /> {product.productUrl ? "Buy" : "Search"}</Button>
       </div>
     </div>
 

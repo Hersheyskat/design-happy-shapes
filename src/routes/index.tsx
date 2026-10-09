@@ -4,8 +4,6 @@ import { ArrowLeft, ArrowRight, Camera, Check, Heart, ImagePlus, Instagram, Link
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { CatalogProductGrid, productBrand } from "@/components/catalog-product-grid";
-import { LookPhotoViewer } from "@/components/look-photo-viewer";
 import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
 import { ShopLookShell } from "@/components/shoplook-shell";
@@ -33,21 +31,31 @@ function shopUrl(product: Product) {
   return product.productUrl;
 }
 
-function PreviewPhoto({ src, alt, contain = false }: { src: string; alt: string; contain?: boolean }) {
+function productBrand(name: string) {
+  const brands = [
+    "Symbol Premium", "SMOWKLY", "DEELMO", "INKAST", "AD by Arvind", "BASICS", "Thomas Scott",
+    "FableStreet", "SaintX", "Cottinfab", "U.S. Polo ASSN.", "ROCKSY", "KLOSIA", "Stylum", "Myx",
+    "Calvin Klein", "CK", "Louis Philippe", "USPA", "Levi's", "SHEIN", "Moomaya",
+  ];
+  const withoutRetailerPrefix = name.replace(/^Amazon Brand\s*[-–]\s*/i, "");
+  return brands.find((brand) => withoutRetailerPrefix.toLowerCase().startsWith(brand.toLowerCase())) ?? "Brand not listed";
+}
+
+function PreviewPhoto({ src, alt }: { src: string; alt: string }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   return <div className="relative size-full overflow-hidden bg-surface">
     {!loaded && !failed && <div className="absolute inset-0 grid place-items-center" role="status" aria-label="Loading image"><LoaderCircle className="size-5 animate-spin text-muted-foreground" /></div>}
-    {failed ? <div className="flex size-full items-center justify-center px-3 text-center text-xs text-muted-foreground">Image unavailable</div> : <img src={src} alt={alt} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} className={`size-full ${contain ? "object-contain" : "object-cover"} ${loaded ? "" : "invisible"}`} />}
+    {failed ? <div className="flex size-full items-center justify-center px-3 text-center text-xs text-muted-foreground">Image unavailable</div> : <img src={src} alt={alt} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} className={`size-full object-cover ${loaded ? "" : "invisible"}`} />}
   </div>;
 }
 
-function LookImage({ person, product, generated, comparison = false, compact = false }: { person: string; product: Product; generated?: string | undefined; comparison?: boolean; compact?: boolean }) {
+function LookImage({ person, product, generated, comparison = false }: { person: string; product: Product; generated?: string | undefined; comparison?: boolean }) {
   const [generatedFailed, setGeneratedFailed] = useState(false);
   useEffect(() => setGeneratedFailed(false), [generated]);
   const showGenerated = Boolean(generated && !generatedFailed);
-  return <div className={`relative w-full overflow-hidden bg-surface ${compact ? "h-[260px]" : "aspect-[2/3]"}`}>
-    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className={`size-full ${compact ? "object-contain" : "object-cover"} ${comparison && product.id === "teal" ? "scale-125" : ""}`} /></div> : <PreviewPhoto key={person} contain={compact} src={person} alt="Your original photo — no outfit has been generated yet" />}
+  return <div className="relative aspect-[2/3] w-full overflow-hidden bg-surface">
+    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className={`size-full object-cover ${comparison && product.id === "teal" ? "scale-125" : ""}`} /></div> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" />}
     <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold text-overlay-foreground">{showGenerated ? "ShopLook.ai" : "Your original photo"}</span>
     {generatedFailed && <span role="alert" className="absolute right-3 top-3 rounded bg-overlay px-2 py-1 text-xs text-overlay-foreground">AI image unavailable · showing your photo</span>}
   </div>;
@@ -69,15 +77,8 @@ function ShopLook() {
   }, [loadCatalog]);
   const selectedProduct = products.find((product) => product.id === selectedProductId);
   useEffect(() => { if (selectedProduct) setAudience(selectedProduct.audience); }, [selectedProduct]);
-  const [chosenProductId, setChosenProductId] = useState("");
-  const queuedProductId = chosenProductId || selectedProductId;
-  const visibleProducts = products.filter((product) => product.audience === audience).sort((left, right) => left.id === queuedProductId ? -1 : right.id === queuedProductId ? 1 : 0);
-  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
-  const firstProduct = visibleProducts.find((product) => product.id === chosenProductId) ?? visibleProducts[0];
-  const women = products.filter((product) => product.audience === "women");
-  const men = products.filter((product) => product.audience === "men");
-  const mixedProducts = Array.from({ length: Math.max(women.length, men.length) }, (_, index) => [women[index], men[index]]).flat().filter((product): product is Product => Boolean(product));
-  const openingProducts = audience ? visibleProducts : mixedProducts;
+  const visibleProducts = products.filter((product) => product.audience === audience).sort((left, right) => left.id === selectedProductId ? -1 : right.id === selectedProductId ? 1 : 0);
+  const firstProduct = visibleProducts[0];
   const [view, setView] = useState<"start" | "try" | "compare">("start");
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -122,7 +123,7 @@ function ShopLook() {
   useEffect(() => () => cameraStream?.getTracks().forEach((track) => track.stop()), [cameraStream]);
 
   function applyPhoto(file: File, url: string) {
-    setAudience(null); setChosenProductId("");
+    setAudience(null);
     setError(""); setPhoto(url); setPhotoFile(file); setGenerated({}); setStylistComments({}); setStylistErrors({}); setFavorites([]); setSavedLooks({}); setGenerationError("");
   }
 
@@ -194,12 +195,8 @@ function ShopLook() {
     setCapturedSelfie(null); setCameraOpen(false); setCameraError("");
   }
 
-  function chooseOpeningProduct(product: Product) {
-    setAudience(product.audience); setChosenProductId(product.id);
-  }
-
   function chooseAudience(next: "men" | "women") {
-    setAudience(next); setActiveId(""); setChosenProductId("");
+    setAudience(next); setActiveId("");
   }
 
   function applyFavorite(id: string) {
@@ -383,7 +380,7 @@ function ShopLook() {
     }
   }
 
-  function reset() { setChosenProductId(""); setPhotoViewerOpen(false); setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setStylistComments({}); setStylistErrors({}); setStylistLoading(null); setGenerationError(""); setFavorites([]); setSavedLooks({}); setActiveId(""); setShareId(null); setMessage(""); }
+  function reset() { setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setStylistComments({}); setStylistErrors({}); setStylistLoading(null); setGenerationError(""); setFavorites([]); setSavedLooks({}); setActiveId(""); setShareId(null); setMessage(""); }
 
   return <ShopLookShell>
     <header className="flex h-16 items-center justify-between border-b border-border px-5">
@@ -392,33 +389,34 @@ function ShopLook() {
       <span className="w-10" />
     </header>
 
-    {view === "start" && <section className="px-5 pb-8 pt-4">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">AI-Powered Shopping Agent</p>
-      <h1 className="mt-1 font-display text-3xl leading-tight">Shop your look.</h1>
-      <p className="mt-1 text-xs text-muted-foreground">Fashion shopping made personal and fun.</p>
-      <Button type="button" variant="outline" className="mt-4 grid h-20 w-full grid-cols-[auto_minmax(0,1fr)] justify-start gap-3 px-3 text-left" onClick={() => setPhotoChoiceOpen(true)} aria-label={photo ? "Change your photo" : "Add your photo"}>
-        {photo ? <img src={photo} alt="Your photo preview" className="h-16 w-12 rounded-sm object-contain" /> : <span className="grid size-12 place-items-center rounded-full bg-surface text-primary"><ImagePlus className="size-6" /></span>}
-        <span className="min-w-0"><span className="block font-display text-xl">{photo ? "Your photo" : "Add your photo"}</span><span className="block text-xs font-normal text-muted-foreground">{photo ? "Photo ready · tap to change" : "Upload a photo or take a selfie"}</span></span>
-      </Button>
+    {view === "start" && <section className="px-5 pb-12 pt-7">
+      <p className="text-xs font-semibold uppercase tracking-widest text-primary">AI-Powered Shopping Agent</p>
+      <h1 className="mt-3 font-display text-5xl leading-none">Shop your look.</h1>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">Fashion shopping made personal and fun.</p>
+      <div className="mt-6 overflow-hidden rounded-md bg-surface">
+        <Button type="button" variant="ghost" className="relative aspect-[5/4] h-auto w-full rounded-none p-0" onClick={() => setPhotoChoiceOpen(true)} aria-label={photo ? "Change your photo" : "Add your photo"}>
+          {photo ? <img src={photo} alt="Your photo preview" className="size-full object-cover" /> : <div className="flex size-full flex-col items-center justify-center gap-3 bg-surface"><span className="grid size-14 place-items-center rounded-full bg-background text-primary"><ImagePlus className="size-6" /></span><span className="font-display text-2xl">Add your photo</span><span className="text-xs text-muted-foreground">Choose a clear picture of yourself</span></div>}
+          {photo && <span className="absolute bottom-3 right-3 rounded bg-overlay px-3 py-1.5 text-xs text-overlay-foreground"><Check className="mr-1 inline size-3" /> Photo ready · tap to change</span>}
+        </Button>
+      </div>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose your photo" className="sr-only" onChange={upload} />
-      <h2 className="mt-3 text-sm font-semibold">Choose one</h2>
-      <div className="mt-2 grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Woman</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Man</Button>{audience && <span className="text-right text-xs text-muted-foreground">{visibleProducts.length} products</span>}</div>
+        <h2 className="mt-5 text-sm font-semibold">Choose one</h2>
+        <div className="mt-2 flex gap-2" role="group" aria-label="Explore products"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => chooseAudience("women")}>Woman</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => chooseAudience("men")}>Man</Button>{audience && <span className="self-center text-xs text-muted-foreground">{visibleProducts.length} products</span>}</div>
+       {selectedProduct && selectedProduct.audience === audience && <div className="mt-4 flex items-center gap-3 rounded-md border border-primary bg-surface p-2"><img src={selectedProduct.image} alt="" className="size-14 rounded-sm object-contain" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase text-primary">First in your Look queue</p><p className="truncate text-sm font-medium">{selectedProduct.name}</p></div></div>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
-      <Button className="mt-3 h-11 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your ShopLook <Sparkles /></Button>
-      <h2 className="mb-3 mt-5 font-display text-xl">Explore apparel</h2>
-      {!products.length && !catalogError && <p role="status" className="py-6 text-sm text-muted-foreground">Loading products…</p>}
-      <CatalogProductGrid products={openingProducts} selectedId={firstProduct?.id} mode="choose" onSelect={chooseOpeningProduct} />
+        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your ShopLook <Sparkles /></Button>
     </section>}
 
     {view === "try" && active && <section className="pb-12">
-         <div className="relative"><Button variant="ghost" className="block h-auto w-full rounded-none p-0" aria-label="Open full-size look photo" onClick={() => setPhotoViewerOpen(true)}><LookImage person={person} product={active} generated={generated[active.id]} compact /></Button>{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your ShopLook…</div>}</div>
+         <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your ShopLook…</div>}</div>
            <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{productBrand(active.name)}</h2><p className="text-sm text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={!generated[active.id] || !stylistComments[active.id] || savingIds.includes(active.id)} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from comparison` : `Save ${active.name} to my looks`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}>{savingIds.includes(active.id) ? <LoaderCircle className="animate-spin" /> : <Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} />}</Button></div>
             <div className="mt-4 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={!generated[active.id]} onClick={() => void openShare(active)}><Share2 /> Share</Button><Button className="h-11 px-2" onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
            {generated[active.id] && <div className="mx-5 mt-4 border-y border-border py-4"><div className="flex items-center gap-2 text-primary"><Sparkles className="size-4" /><h3 className="text-sm font-semibold">Stylist's take</h3></div>{stylistLoading === active.id ? <p role="status" className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Reviewing your look…</p> : stylistComments[active.id] ? <p className="mt-2 text-sm leading-6">{stylistComments[active.id]}</p> : stylistErrors[active.id] ? <p role="alert" className="mt-2 text-sm text-muted-foreground">{stylistErrors[active.id]}</p> : null}</div>}
           {generationError && <div className="px-5 pt-3"><p role="alert" className="text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p></div>}
-             <div className="mt-5 px-5"><h2 className="mb-3 font-display text-2xl">Create more looks</h2><CatalogProductGrid products={visibleProducts} selectedId={activeId} generatingId={generating} mode="create" onSelect={(product) => selectProduct(product.id)} /></div>
-<div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={comparison.length === 0} onClick={() => setView("compare")}>Compare my looks ({comparison.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{comparison.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
+      <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Create more looks</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
+          <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{visibleProducts.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 pt-2 text-xs font-medium">{productBrand(product.name)}</span><span className="block w-full truncate px-2 text-[11px] text-muted-foreground">{product.retailer}</span><span className="w-full px-2 pb-2 text-xs">₹{product.price.toLocaleString("en-IN")}</span></Button>)}</div>
+         <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={comparison.length === 0} onClick={() => setView("compare")}>Compare my looks ({comparison.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{comparison.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
     </section>}
 
     {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>
@@ -427,7 +425,6 @@ function ShopLook() {
          <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">AI visualizations are not fit guarantees · retailer links are for discovery · no partnership implied</p>
     </section>}
 
-    <LookPhotoViewer src={active ? generated[active.id] ?? person : person} open={photoViewerOpen} onOpenChange={setPhotoViewerOpen} />
     {photoChoiceOpen && <div role="dialog" aria-modal="true" aria-label="Add your photo" className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setPhotoChoiceOpen(false); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Add your photo</h2><Button variant="ghost" size="icon" aria-label="Close photo options" onClick={() => setPhotoChoiceOpen(false)}><X /></Button></div><div className="mt-5 grid gap-2"><Button className="h-12 justify-start" onClick={() => { setPhotoChoiceOpen(false); fileRef.current?.click(); }}><Upload /> Upload your photo</Button><Button variant="outline" className="h-12 justify-start" onClick={() => void startCamera()}><Camera /> Take your selfie</Button></div></div></div>}
 
     {cameraOpen && <div role="dialog" aria-modal="true" aria-label="Take your selfie" className="fixed inset-0 z-50 flex items-end justify-center bg-scrim"><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Take your selfie</h2><Button variant="ghost" size="icon" aria-label="Cancel selfie" onClick={closeCamera}><X /></Button></div><div className="mt-4 aspect-[3/4] overflow-hidden rounded-md bg-surface">{capturedSelfie ? <img src={capturedSelfie.url} alt="Your captured selfie" className="size-full object-cover" /> : cameraError ? <div className="flex size-full items-center justify-center px-8 text-center text-sm text-muted-foreground">{cameraError}</div> : <video ref={videoRef} autoPlay playsInline muted className="size-full scale-x-[-1] object-cover" />}</div><canvas ref={canvasRef} className="hidden" />{capturedSelfie ? <div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void retakeSelfie()}><Camera /> Retake</Button><Button className="h-12" onClick={useSelfie}><Check /> Use photo</Button></div> : cameraError ? <div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={closeCamera}>Cancel</Button><Button className="h-12" onClick={() => { closeCamera(); fileRef.current?.click(); }}><Upload /> Upload</Button></div> : <Button className="mt-4 h-12 w-full" onClick={captureSelfie}><Camera /> Capture</Button>}</div></div>}

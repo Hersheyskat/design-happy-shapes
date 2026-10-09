@@ -19,4 +19,3 @@
 - Treat Node's abortIncoming socket-close error as a disconnected request, not an app crash, while preserving reporting for other server errors.
 - Generate one concise, image-grounded stylist comment after each completed ShopLook, without delaying or replacing the generated image.
 - Share Instagram looks as private image files through the device share sheet with a local download fallback; open WhatsApp directly with a ShopLook text and page link.
-- Reuse one catalogue-grid component for opening product selection and look creation; keep compact photo sizing local to the main Look view so comparison proportions remain unchanged.

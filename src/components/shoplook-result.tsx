@@ -14,9 +14,9 @@ type Props = {
   saving: boolean;
   selected: boolean;
   canSave: boolean;
-  comment?: string;
+  comment?: string | undefined;
   commentLoading: boolean;
-  commentError?: string;
+  commentError?: string | undefined;
   generationError: string;
   comparisonCount: number;
   brand: (name: string) => string;
@@ -56,8 +56,8 @@ export function ShopLookResult(props: Props) {
     <section className="border-t border-border pt-4" aria-labelledby="try-another-heading">
       <div className="flex items-center justify-between px-5"><h2 id="try-another-heading" className="font-display text-2xl">Try another look</h2><ArrowRight className="size-4 shrink-0 text-primary" aria-hidden="true" /></div>
       <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-4 scrollbar-none" aria-label="Products to try on">
-        {props.products.map((item) => <Button key={item.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${item.name} on me`} aria-pressed={product.id === item.id} onClick={() => props.onSelect(item.id)} className={`h-auto w-[116px] shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left hover:bg-secondary ${product.id === item.id || generating === item.id ? "border-primary" : "border-border"}`}>
-          <span className="relative aspect-square w-full bg-surface"><img src={item.image} alt="" loading="lazy" width={240} height={240} className="size-full object-contain" />{product.id === item.id && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-3" /></span>}</span>
+        {props.products.map((item) => <Button key={item.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${item.name} on me`} aria-pressed={product.id === item.id} onClick={() => props.onSelect(item.id)} className={`h-auto w-[110px] shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left hover:bg-secondary ${product.id === item.id || generating === item.id ? "border-primary" : "border-border"}`}>
+          <span className="relative block h-[108px] w-full shrink-0 overflow-hidden bg-surface"><img src={item.image} alt="" loading="lazy" width={240} height={240} className="size-full object-contain" />{product.id === item.id && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-3" /></span>}</span>
           <span className="w-full truncate px-2 pt-2 text-xs font-medium">{props.brand(item.name)}</span>
           <span className="w-full px-2 pt-1 text-[11px] text-muted-foreground">₹{item.price.toLocaleString("en-IN")}</span>
           <span className="flex w-full items-center justify-between px-2 py-2 text-xs font-semibold text-primary">Try this on <ArrowRight className="size-3" /></span>

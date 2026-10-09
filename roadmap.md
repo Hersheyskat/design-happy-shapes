@@ -37,3 +37,5 @@
 - [x] Restore an explicit private Save action for completed ShopLooks, with sign-in continuation and Saved archive access.
 - [x] Make the heart the single Save my look action and remove the separate save button.
 - [x] Allow multiple hearted ShopLooks to save independently, with each heart filling only after its own upload succeeds.
+
+- [x] Make the main generated ShopLook smaller while keeping the full outfit visible and revealing the product listing below.

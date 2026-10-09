@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Redesign the result screen with a prominent photo, immediate Share/heart-Save/Buy actions, swipeable try-on products, collapsible Stylist's take, and full-screen image viewing; preserve existing generation and saving.
+- [x] Redesign the result screen with a prominent photo, immediate Share/heart-Save/Buy actions, swipeable try-on products, collapsible Stylist's take, and full-screen image viewing; preserve existing generation and saving.
 
 - [x] Add the demo-first photo upload and optional style note.
 - [x] Show a generated virtual look after explicit request, with tappable catalog choices and the original photo as a pending/failure fallback.

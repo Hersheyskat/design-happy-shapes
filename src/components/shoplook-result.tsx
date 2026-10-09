@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
-import { ArrowRight, Check, ChevronDown, Expand, Heart, LoaderCircle, Share2, ShoppingBag, Sparkles } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Expand, Heart, LoaderCircle, Search, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import type { CatalogProductDto } from "@/lib/community.types";
 
@@ -29,6 +30,13 @@ type Props = {
 
 export function ShopLookResult(props: Props) {
   const [imageOpen, setImageOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const normalize = (value: string) => value.toLowerCase().replace(/t[\s-]*shirts?\b/g, "tshirt").replace(/\bshirts\b/g, "shirt").replace(/\bjackets\b/g, "jacket").replace(/\bdresses\b/g, "dress").replace(/\bjeans\b/g, "jean");
+  const terms = normalize(search).trim().split(/\s+/).filter(Boolean);
+  const matchingProducts = props.products.filter((item) => {
+    const text = normalize(`${item.name} ${item.category} ${item.retailer}`);
+    return terms.every((term) => text.includes(term));
+  });
   const { product, completed, generating, selected, saving } = props;
   return <section className="bg-card pb-8 text-foreground">
     <div className="relative">
@@ -55,8 +63,17 @@ export function ShopLookResult(props: Props) {
 
     <section className="border-t border-border pt-4" aria-labelledby="try-another-heading">
       <div className="flex items-center justify-between px-5"><h2 id="try-another-heading" className="font-display text-2xl">Try another look</h2><ArrowRight className="size-4 shrink-0 text-primary" aria-hidden="true" /></div>
+      <div className="mt-3 px-5">
+        <label htmlFor="look-clothing-search" className="mb-1.5 block text-xs font-medium">Search clothing</label>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input id="look-clothing-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Shirts, jackets, dresses…" className="h-10 bg-background pl-9 pr-10 [&::-webkit-search-cancel-button]:appearance-none" />
+          {search && <Button variant="ghost" size="icon" className="absolute right-0 top-0 size-10" aria-label="Clear clothing search" title="Clear search" onClick={() => setSearch("")}><X className="size-4" /></Button>}
+        </div>
+        {search.trim() && <p role="status" className="mt-2 text-xs text-muted-foreground">{matchingProducts.length ? `${matchingProducts.length} ${matchingProducts.length === 1 ? "match" : "matches"}` : "No matching clothing. Try a different search."}</p>}
+      </div>
       <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-4 scrollbar-none" aria-label="Products to try on">
-        {props.products.map((item) => <Button key={item.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${item.name} on me`} aria-pressed={product.id === item.id} onClick={() => props.onSelect(item.id)} className={`h-auto w-[110px] shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left hover:bg-secondary ${product.id === item.id || generating === item.id ? "border-primary" : "border-border"}`}>
+        {matchingProducts.map((item) => <Button key={item.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${item.name} on me`} aria-pressed={product.id === item.id} onClick={() => props.onSelect(item.id)} className={`h-auto w-[110px] shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left hover:bg-secondary ${product.id === item.id || generating === item.id ? "border-primary" : "border-border"}`}>
           <span className="relative block h-[108px] w-full shrink-0 overflow-hidden bg-surface"><img src={item.image} alt="" loading="lazy" width={240} height={240} className="size-full object-contain" />{product.id === item.id && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-3" /></span>}</span>
           <span className="flex w-full items-center justify-between px-2 py-2 text-xs font-semibold text-primary">Try this on <ArrowRight className="size-3" /></span>
           <span className="w-full truncate px-2 text-xs font-medium">{props.brand(item.name)}</span>

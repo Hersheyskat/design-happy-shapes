@@ -146,6 +146,21 @@ export const saveMyLook = createServerFn({ method: "POST" })
       colors: [] as Json, adjustments: [] as Json,
     }).select("id").single();
     if (inserted.error) throw new Error(inserted.error.message);
+    await context.supabase.from("shopper_events").insert({
+      event_type: "look_saved",
+      actor_type: "auth",
+      user_id: context.userId,
+      catalog_product_id: item?.id ?? null,
+      saved_look_id: inserted.data.id,
+      channel: "heart",
+      metadata: {
+        product_name: item?.product_name ?? null,
+        retailer: item?.retailer ?? null,
+        price: item?.price ?? null,
+        currency: item?.currency ?? null,
+        product_url: item?.product_url ?? data.productUrl,
+      },
+    });
     const rows = [
       ...((item?.product_url ?? data.productUrl) ? [{ look_id: inserted.data.id, user_id: context.userId, label: item?.product_name ?? "Original product", search_term: "Original product", destination_url: (item?.product_url ?? data.productUrl)!, source: "submitted", display_order: 0 }] : []),
     ];

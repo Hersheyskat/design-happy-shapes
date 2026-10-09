@@ -10,10 +10,60 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.18"
   }
   public: {
     Tables: {
+      admin_sessions: {
+        Row: {
+          admin_id: string
+          created_at: string
+          expires_at: string
+          token: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          expires_at: string
+          token?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          expires_at?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sessions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          password_hash: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          password_hash: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          password_hash?: string
+        }
+        Relationships: []
+      }
       ai_generation_cooldowns: {
         Row: {
           client_hash: string
@@ -462,6 +512,57 @@ export type Database = {
           },
         ]
       }
+      shopper_events: {
+        Row: {
+          actor_type: string
+          catalog_product_id: string | null
+          channel: string | null
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json
+          saved_look_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          actor_type: string
+          catalog_product_id?: string | null
+          channel?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          saved_look_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          actor_type?: string
+          catalog_product_id?: string | null
+          channel?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          saved_look_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopper_events_catalog_product_id_fkey"
+            columns: ["catalog_product_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopper_events_saved_look_id_fkey"
+            columns: ["saved_look_id"]
+            isOneToOne: false
+            referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_blocks: {
         Row: {
           blocked_id: string
@@ -500,6 +601,48 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_dashboard: { Args: { _token: string }; Returns: Json }
+      admin_delete_catalog_product: { Args: { _id: string; _token: string }; Returns: Json }
+      admin_get_catalog_product: { Args: { _id: string; _token: string }; Returns: Json }
+      admin_list_catalog: {
+        Args: {
+          _active?: string
+          _audience?: string
+          _availability?: string
+          _dir?: string
+          _limit?: number
+          _offset?: number
+          _retailer?: string
+          _search?: string
+          _sort?: string
+          _token: string
+        }
+        Returns: Json
+      }
+      admin_require_email: { Args: { _token: string }; Returns: string }
+      admin_upsert_catalog_product: { Args: { _product: Json; _token: string }; Returns: Json }
+      admin_list_activity: {
+        Args: {
+          _actor?: string
+          _channel?: string
+          _dir?: string
+          _kind: string
+          _limit?: number
+          _offset?: number
+          _published?: boolean
+          _range?: string
+          _search?: string
+          _sort?: string
+          _token: string
+        }
+        Returns: Json
+      }
+      admin_login: {
+        Args: { _email: string; _password: string }
+        Returns: Json
+      }
+      admin_logout: { Args: { _token: string }; Returns: undefined }
+      admin_session: { Args: { _token: string }; Returns: Json }
       claim_ai_generation_cooldown: {
         Args: { _client_hash: string }
         Returns: boolean

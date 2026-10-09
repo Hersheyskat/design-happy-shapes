@@ -10,7 +10,7 @@ export function productBrand(name: string) {
 
 export function CatalogProductGrid({ products, selectedId, generatingId, onSelect, mode }: {
   products: CatalogProductDto[];
-  selectedId?: string;
+  selectedId?: string | undefined;
   generatingId?: string | null;
   onSelect: (product: CatalogProductDto) => void;
   mode: "choose" | "create";

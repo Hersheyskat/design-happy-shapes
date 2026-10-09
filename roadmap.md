@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Shrink the Try another look heading and spacing and visually remove the Search clothing label while preserving search accessibility.
+
 - [x] Add a clearly labelled clothing search to the result carousel, filtering by clothing type, product name, or retailer without changing saved looks or generation.
 
 - [x] Redesign the result screen with a prominent photo, immediate Share/heart-Save/Buy actions, swipeable try-on products, collapsible Stylist's take, and full-screen image viewing; preserve existing generation and saving.

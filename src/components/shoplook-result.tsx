@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { ArrowRight, Check, ChevronDown, Expand, Heart, LoaderCircle, Search, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ type Props = {
 };
 
 export function ShopLookResult(props: Props) {
+  const imageRef = useRef<HTMLDivElement>(null);
   const [imageOpen, setImageOpen] = useState(false);
   const [search, setSearch] = useState("");
   const normalize = (value: string) => value.toLowerCase().replace(/t[\s-]*shirts?\b/g, "tshirt").replace(/\bshirts\b/g, "shirt").replace(/\bjackets\b/g, "jacket").replace(/\bdresses\b/g, "dress").replace(/\bjeans\b/g, "jean");
@@ -39,7 +40,7 @@ export function ShopLookResult(props: Props) {
   });
   const { product, completed, generating, selected, saving } = props;
   return <section className="bg-card pb-8 text-foreground">
-    <div className="relative">
+    <div ref={imageRef} className="relative scroll-mt-16">
       {props.image}
       <Button variant="ghost" className="absolute inset-0 h-full w-full rounded-none p-0 hover:bg-transparent" aria-label="View your look full-screen" onClick={() => setImageOpen(true)}>
         <span className="absolute bottom-3 right-3 grid size-9 place-items-center rounded-full bg-overlay text-overlay-foreground"><Expand /></span>
@@ -62,7 +63,7 @@ export function ShopLookResult(props: Props) {
     {props.generationError && <p role="alert" className="px-5 pb-3 text-xs text-destructive">{props.generationError} Tap the product again to retry.</p>}
 
     <section className="border-t border-border pt-3" aria-labelledby="try-another-heading">
-      <div className="flex items-center justify-between px-5"><h2 id="try-another-heading" className="font-display text-lg">Try another look</h2><ArrowRight className="size-4 shrink-0 text-primary" aria-hidden="true" /></div>
+      <div className="flex items-center justify-between px-5"><h2 id="try-another-heading" className="font-display text-lg">Try another look</h2></div>
       <div className="mt-2 px-5">
         <label htmlFor="look-clothing-search" className="sr-only">Search clothing</label>
         <div className="relative">
@@ -72,12 +73,16 @@ export function ShopLookResult(props: Props) {
         </div>
         {search.trim() && <p role="status" className="mt-2 text-xs text-muted-foreground">{matchingProducts.length ? `${matchingProducts.length} ${matchingProducts.length === 1 ? "match" : "matches"}` : "No matching clothing. Try a different search."}</p>}
       </div>
-      <div className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-4 scrollbar-none" aria-label="Products to try on">
-        {matchingProducts.map((item) => <Button key={item.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${item.name} on me`} aria-pressed={product.id === item.id} onClick={() => props.onSelect(item.id)} className={`h-auto w-[110px] shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left hover:bg-secondary ${product.id === item.id || generating === item.id ? "border-primary" : "border-border"}`}>
-          <span className="relative block h-[108px] w-full shrink-0 overflow-hidden bg-surface"><img src={item.image} alt="" loading="lazy" width={240} height={240} className="size-full object-contain" />{product.id === item.id && <span className="absolute right-1.5 top-1.5 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground"><Check className="size-3" /></span>}</span>
-          <span className="flex w-full items-center justify-between px-2 py-2 text-xs font-semibold text-primary">Try this on <ArrowRight className="size-3" /></span>
-          <span className="w-full truncate px-2 text-xs font-medium">{props.brand(item.name)}</span>
-          <span className="w-full px-2 pb-2 pt-1 text-[11px] text-muted-foreground">₹{item.price.toLocaleString("en-IN")}</span>
+      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-5 px-5 pb-5" aria-label="Products to try on">
+        {matchingProducts.map((item) => <Button key={item.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${item.name} on me`} aria-pressed={product.id === item.id} onClick={() => {
+          props.onSelect(item.id);
+          imageRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
+        }} className="h-auto min-w-0 w-full flex-col items-stretch justify-start gap-0 whitespace-normal rounded-none p-0 text-left hover:bg-transparent disabled:opacity-70">
+          <span className={`relative block aspect-[3/4] w-full shrink-0 overflow-hidden rounded-md border bg-surface ${product.id === item.id || generating === item.id ? "border-primary" : "border-border"}`}><img src={item.image} alt="" loading="lazy" width={300} height={400} className="size-full object-contain transition-transform motion-safe:hover:scale-105" />{(product.id === item.id || generating === item.id) && <span className="absolute right-2 top-2 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground">{generating === item.id ? <LoaderCircle className="size-3 animate-spin" /> : <Check className="size-3" />}</span>}</span>
+          <span className="w-full truncate pt-2 text-sm font-semibold">{props.brand(item.name)}</span>
+          <span className="w-full truncate pt-0.5 text-[11px] text-muted-foreground">{item.retailer}</span>
+          <span className="w-full pt-1 text-sm font-semibold">₹{item.price.toLocaleString("en-IN")}</span>
+          <span className="flex w-full items-center justify-between pt-1.5 text-xs font-semibold text-primary">{generating === item.id ? "Creating…" : "Try this on"} <ArrowRight className="size-3" /></span>
         </Button>)}
       </div>
     </section>

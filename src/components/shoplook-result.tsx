@@ -1,5 +1,5 @@
-import { useRef, useState, type ReactNode } from "react";
-import { ArrowRight, Check, ChevronDown, Expand, Heart, LoaderCircle, Search, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, Check, Expand, Heart, LoaderCircle, Search, Share2, ShoppingBag, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -32,6 +32,16 @@ export function ShopLookResult(props: Props) {
   const imageRef = useRef<HTMLDivElement>(null);
   const [imageOpen, setImageOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [stylistOpen, setStylistOpen] = useState(false);
+  const [stylistPinned, setStylistPinned] = useState(false);
+  const stylistKey = props.completed && !props.generating && props.comment ? `${props.product.id}:${props.imageUrl}:${props.comment}` : "";
+  useEffect(() => {
+    setStylistPinned(false);
+    setStylistOpen(Boolean(stylistKey));
+    if (!stylistKey) return;
+    const timer = window.setTimeout(() => setStylistOpen(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [stylistKey]);
   const normalize = (value: string) => value.toLowerCase().replace(/t[\s-]*shirts?\b/g, "tshirt").replace(/\bshirts\b/g, "shirt").replace(/\bjackets\b/g, "jacket").replace(/\bdresses\b/g, "dress").replace(/\bjeans\b/g, "jean");
   const terms = normalize(search).trim().split(/\s+/).filter(Boolean);
   const matchingProducts = props.products.filter((item) => {
@@ -48,6 +58,13 @@ export function ShopLookResult(props: Props) {
       </Button>
       <Button variant="ghost" size="icon" className={`absolute right-3 z-10 size-9 rounded-full bg-overlay text-overlay-foreground hover:bg-overlay hover:text-overlay-foreground ${generating ? "top-14" : "top-3"}`} aria-label="Share your look" title="Share your look" disabled={!completed} onClick={props.onShare}><Share2 className="size-4" /></Button>
       {generating && <div role="status" className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-5 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your ShopLook…</div>}
+      {stylistKey && <>
+        <div id="shoplook-stylist-take" aria-live="polite" className={`absolute inset-x-3 bottom-14 z-10 origin-bottom-right rounded-md border border-border bg-card/95 p-3 text-card-foreground shadow-float backdrop-blur-sm motion-safe:transition-all motion-safe:duration-300 ${stylistOpen || stylistPinned ? "visible translate-y-0 opacity-100" : "invisible pointer-events-none translate-y-2 opacity-0"}`}>
+          <div className="mb-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"><h2 className="flex min-w-0 items-center gap-2 text-xs font-semibold text-primary"><Sparkles className="size-4 shrink-0" /> Stylist’s take</h2><Button variant="ghost" size="icon" className="size-7" aria-label="Close stylist’s take" onClick={() => { setStylistOpen(false); setStylistPinned(false); }}><X className="size-3" /></Button></div>
+          <p className="text-sm leading-5">{props.comment}</p>
+        </div>
+        {!(stylistOpen || stylistPinned) && <Button variant="ghost" size="icon" className="absolute bottom-14 right-3 z-10 size-9 rounded-full bg-overlay text-overlay-foreground hover:bg-overlay hover:text-overlay-foreground" aria-label="Read stylist’s take" title="Stylist’s take" aria-controls="shoplook-stylist-take" aria-expanded={false} onClick={() => setStylistPinned(true)}><Sparkles className="size-4" /></Button>}
+      </>}
     </div>
 
     <div className="px-5 py-3">
@@ -88,10 +105,6 @@ export function ShopLookResult(props: Props) {
       </div>
     </section>
 
-    {completed && <details className="group mx-5 border-y border-border">
-      <summary className="flex cursor-pointer list-none items-center gap-2 py-4 text-sm font-semibold text-primary [&::-webkit-details-marker]:hidden"><Sparkles className="size-4" /> Stylist's take <ChevronDown className="ml-auto size-4 transition-transform group-open:rotate-180" /></summary>
-      <div className="pb-4">{props.commentLoading ? <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Reviewing your look…</p> : props.comment ? <p className="text-sm leading-6">{props.comment}</p> : props.commentError ? <p role="alert" className="text-sm text-muted-foreground">{props.commentError}</p> : null}</div>
-    </details>}
 
     <Dialog open={imageOpen} onOpenChange={setImageOpen}>
       <DialogContent aria-describedby={undefined} className="h-dvh max-h-dvh w-full max-w-[430px] min-h-0 overflow-hidden gap-0 rounded-none border-0 bg-card p-2 sm:rounded-none [&>button]:z-10 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100">

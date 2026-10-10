@@ -7,13 +7,14 @@ import { z } from "zod";
 import { AuthDialog } from "@/components/auth-dialog";
 import { Button } from "@/components/ui/button";
 import { ShopLookShell } from "@/components/shoplook-shell";
+import { ShopLookResult } from "@/components/shoplook-result";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureLookShareSlug, listCatalogProducts, saveMyLook } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 import { recordShopperEvent } from "@/lib/shopper-events.functions";
 import { analyseGeneratedLook } from "@/lib/stylist-comment.functions";
 type Product = CatalogProductDto;
-type PendingAction = { type: "generate" | "favorite" | "share" | "buy"; productId: string };
+type PendingAction = { type: "generate" | "favorite" | "share" | "shareComparison" | "buy"; productId: string };
 
 export const Route = createFileRoute("/")({
   validateSearch: (search) => z.object({ product: z.string().optional(), mood: z.string().optional() }).catch({}).parse(search),
@@ -62,13 +63,13 @@ function PreviewPhoto({ src, alt }: { src: string; alt: string }) {
   </div>;
 }
 
-function LookImage({ person, product, generated, comparison = false }: { person: string; product: Product; generated?: string | undefined; comparison?: boolean }) {
+function LookImage({ person, product, generated, comparison = false, hero = false }: { person: string; product: Product; generated?: string | undefined; comparison?: boolean; hero?: boolean }) {
   const [generatedFailed, setGeneratedFailed] = useState(false);
   useEffect(() => setGeneratedFailed(false), [generated]);
   const showGenerated = Boolean(generated && !generatedFailed);
-  return <div className="relative aspect-[2/3] w-full overflow-hidden bg-surface">
-    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className={`size-full object-cover ${comparison && product.id === "teal" ? "scale-125" : ""}`} /></div> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" />}
-    <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold text-overlay-foreground">{showGenerated ? "ShopLook.ai" : "Your original photo"}</span>
+  return <div className={`relative w-full overflow-hidden bg-surface ${hero ? "h-[clamp(260px,48dvh,600px)]" : "aspect-[2/3]"}`}>
+    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className={`size-full ${hero ? "object-contain" : "object-cover"} ${comparison && product.id === "teal" ? "scale-125" : ""}`} /></div> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" />}
+    {!showGenerated && <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold text-overlay-foreground">Your original photo</span>}
     {generatedFailed && <span role="alert" className="absolute right-3 top-3 rounded bg-overlay px-2 py-1 text-xs text-overlay-foreground">AI image unavailable · showing your photo</span>}
   </div>;
 }
@@ -107,6 +108,7 @@ function ShopLook() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [shareId, setShareId] = useState<string | null>(null);
   const [sharePreparing, setSharePreparing] = useState(false);
+  const [sharingComparison, setSharingComparison] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -261,18 +263,17 @@ function ShopLook() {
       setSavedLooks((current) => ({ ...current, [product.id]: next }));
       return next;
     }
-    const saved = await saveLook(product);
-    return saved;
+    return await saveLook(product);
   }
 
   async function openShare(product: Product) {
     if (!await requireSignIn({ type: "share", productId: product.id })) return;
     setMessage("");
+    setSharingComparison(false);
     setSharePreparing(true);
     try {
       const saved = await ensureSharedLook(product);
       if (!saved) return;
-      setMessage("");
       setShareId(product.id);
       track("share_click", product, "button");
     } catch (reason) {
@@ -280,6 +281,14 @@ function ShopLook() {
     } finally {
       setSharePreparing(false);
     }
+  }
+
+  async function openComparisonShare() {
+    const first = comparison[0];
+    if (!first || !await requireSignIn({ type: "shareComparison", productId: first.id })) return;
+    setMessage("");
+    setSharingComparison(true);
+    setShareId(first.id);
   }
 
   async function openShop(product: Product) {
@@ -346,17 +355,12 @@ function ShopLook() {
     }
   }
 
-  async function requestGenerate(product: Product) {
-    setView("try");
-    void generateLook(product);
-  }
-
   function selectProduct(id: string) {
     const product = products.find((item) => item.id === id);
     if (!product || generating) return;
     setGenerationError("");
-    if (generated[id] && activeId !== id) setActiveId(id);
-    else void requestGenerate(product);
+    if (generated[id]) setActiveId(id);
+    else void generateLook(product);
   }
 
   async function generateLook(product: Product) {
@@ -408,16 +412,43 @@ function ShopLook() {
     } finally { setGenerating(null); }
   }
 
+  async function shareImageFile(product: Product) {
+    if (!sharingComparison) {
+      return new File([await (await fetch(generated[product.id] ?? "")).blob()], `shoplook-${product.id}.png`, { type: "image/png" });
+    }
+    const images = await Promise.all(comparison.map(async (item) => {
+      const image = new Image();
+      image.src = generated[item.id] ?? "";
+      await image.decode();
+      return image;
+    }));
+    const canvas = document.createElement("canvas");
+    canvas.width = images.length * 600;
+    canvas.height = 900;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not prepare your comparison.");
+    context.fillStyle = getComputedStyle(document.body).backgroundColor;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    images.forEach((image, index) => {
+      const scale = Math.min(600 / image.naturalWidth, 900 / image.naturalHeight);
+      const width = image.naturalWidth * scale;
+      const height = image.naturalHeight * scale;
+      context.drawImage(image, index * 600 + (600 - width) / 2, (900 - height) / 2, width, height);
+    });
+    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not prepare your comparison.")), "image/png"));
+    return new File([blob], "my-shoplook-comparison.png", { type: "image/png" });
+  }
+
   async function shareToInstagram(product: Product) {
     try {
       setMessage("");
       const generatedImage = generated[product.id];
       if (!generatedImage) { setMessage("Generate this look before sharing it."); return; }
-      const image = new File([await (await fetch(generatedImage)).blob()], `shoplook-${product.id}.png`, { type: "image/png" });
+      const image = await shareImageFile(product);
       if (navigator.canShare?.({ files: [image] })) {
         await navigator.share({
           files: [image],
-          title: `My ShopLook — ${product.name}`,
+          title: sharingComparison ? "Compare my ShopLooks" : `My ShopLook — ${product.name}`,
           text: "My ShopLook",
         });
         setShareId(null);
@@ -437,9 +468,33 @@ function ShopLook() {
     }
   }
 
-  function shareToWhatsApp(product: Product) {
+  async function shareToWhatsApp(product: Product) {
     const generatedImage = generated[product.id];
     if (!generatedImage) { setMessage("Generate this look before sharing it."); return; }
+    if (sharingComparison) {
+      const text = `Help me choose from my ShopLooks: ${window.location.href}`;
+      try {
+        const image = await shareImageFile(product);
+        if (navigator.canShare?.({ files: [image] })) {
+          await navigator.share({ files: [image], title: "Compare my ShopLooks", text });
+          setShareId(null);
+          track("share_click", product, "whatsapp");
+          return;
+        }
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(image);
+        link.href = url; link.download = image.name; link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      } catch (reason) {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+        setMessage("Could not prepare your looks. Please try again.");
+        return;
+      }
+      setShareId(null);
+      track("share_click", product, "whatsapp");
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+      return;
+    }
     const url = lookShareUrl(product.id);
     if (!url) { setMessage("This look could not get a share link."); return; }
     const text = `Check out my ShopLook: ${url}`;
@@ -457,10 +512,26 @@ function ShopLook() {
     if (action.type === "generate") { setView("try"); void generateLook(product); }
     if (action.type === "favorite") void favoriteLook(product);
     if (action.type === "share") void openShare(product);
-    if (action.type === "buy") setShopId(product.id);
+    if (action.type === "shareComparison") { setSharingComparison(true); setShareId(product.id); }
+    if (action.type === "buy") void openShop(product);
   }
 
   async function copyLink() {
+    if (sharingComparison) {
+      try { await navigator.clipboard.writeText(window.location.href); setMessage("Link copied. Your private photo is not included in this link."); }
+      catch {
+        const input = document.createElement("textarea");
+        input.value = window.location.href;
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.select();
+        const copied = document.execCommand("copy");
+        input.remove();
+        setMessage(copied ? "Link copied. Your private photo is not included in this link." : "Copying is unavailable in this browser.");
+      }
+      return;
+    }
     if (!shareProduct) return;
     track("share_click", shareProduct, "copy_link");
     const url = lookShareUrl(shareProduct.id);
@@ -482,7 +553,7 @@ function ShopLook() {
   function reset() { setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setStylistComments({}); setStylistErrors({}); setStylistLoading(null); stylistRequestsRef.current.clear(); setGenerationError(""); setFavorites([]); setSavedLooks({}); setActiveId(""); setShareId(null); setShopId(null); setMessage(""); }
 
   return <ShopLookShell>
-    <header className="flex h-16 items-center justify-between border-b border-border px-5">
+    <header className={`flex h-16 items-center justify-between border-b border-border px-5 ${view === "try" ? "bg-card" : ""}`}>
       {view === "start" ? <span className="w-10" /> : <Button variant="ghost" size="icon" aria-label="Go back" onClick={() => setView(view === "compare" ? "try" : "start")}><ArrowLeft /></Button>}
       <Button variant="ghost" onClick={reset} className="font-display text-2xl font-normal">ShopLook</Button>
       <span className="w-10" />
@@ -505,22 +576,34 @@ function ShopLook() {
        {selectedProduct && selectedProduct.audience === audience && <div className="mt-4 flex items-center gap-3 rounded-md border border-primary bg-surface p-2"><img src={selectedProduct.image} alt="" className="size-14 rounded-sm object-contain" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase text-primary">First in your Look queue</p><p className="truncate text-sm font-medium">{selectedProduct.name}</p></div></div>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
-        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; void requestGenerate(firstProduct); }}>Create your ShopLook <Sparkles /></Button>
+        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your ShopLook <Sparkles /></Button>
     </section>}
 
-    {view === "try" && active && <section className="pb-12">
-         <div className="relative"><LookImage person={person} product={active} generated={generated[active.id]} />{generating && <div role="status" className="absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-4 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your ShopLook…</div>}</div>
-           <div className="flex items-center justify-between gap-3 px-5 pt-4"><div className="min-w-0"><h2 className="font-display text-2xl">{productBrand(active.name)}</h2><p className="text-sm text-muted-foreground">{active.retailer} · ₹{active.price.toLocaleString("en-IN")}</p></div><Button variant="outline" size="icon" className="size-11 shrink-0" disabled={Boolean(generating) || !generated[active.id] || savingIds.includes(active.id)} aria-label={favorites.includes(active.id) ? `Remove ${active.name} from comparison` : `Save ${active.name} to my looks`} aria-pressed={favorites.includes(active.id)} onClick={() => void favoriteLook(active)}>{savingIds.includes(active.id) ? <LoaderCircle className="animate-spin" /> : <Heart className={favorites.includes(active.id) ? "fill-primary text-primary" : ""} />}</Button></div>
-            <div className="mt-4 grid grid-cols-2 gap-2 px-5"><Button variant="outline" className="h-11 px-2" disabled={Boolean(generating) || !generated[active.id] || sharePreparing} onClick={() => void openShare(active)}>{sharePreparing ? <LoaderCircle className="animate-spin" /> : <Share2 />} Share</Button><Button className="h-11 px-2" disabled={Boolean(generating)} onClick={() => void openShop(active)}><ShoppingBag /> {active.productUrl ? "Buy" : "Search"}</Button></div>
-           {generated[active.id] && <div className="mx-5 mt-4 border-y border-border py-4"><div className="flex items-center gap-2 text-primary"><Sparkles className="size-4" /><h3 className="text-sm font-semibold">Stylist's take</h3></div>{stylistLoading === active.id ? <p role="status" className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Reviewing your look…</p> : stylistComments[active.id] ? <p className="mt-2 text-sm leading-6">{stylistComments[active.id]}</p> : stylistErrors[active.id] ? <p role="alert" className="mt-2 text-sm text-muted-foreground">{stylistErrors[active.id]}</p> : null}</div>}
-          {generationError && <div className="px-5 pt-3"><p role="alert" className="text-center text-xs text-destructive">{generationError} Tap the product again to retry.</p></div>}
-      <div className="mt-6 flex items-center justify-between px-5"><h2 className="font-display text-2xl">Create more looks</h2><span className="text-xs text-muted-foreground">Swipe to explore →</span></div>
-          <div className="mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-3 scrollbar-thin">{visibleProducts.map((product) => <Button key={product.id} variant="ghost" disabled={Boolean(generating)} aria-label={`Try ${product.name} on me`} aria-pressed={activeId === product.id} onClick={() => selectProduct(product.id)} className={`h-auto w-32 shrink-0 snap-start flex-col items-stretch gap-0 overflow-hidden rounded-md border p-0 text-left ${activeId === product.id || generating === product.id ? "border-primary" : "border-border"}`}><span className="aspect-[4/5] w-full bg-surface"><img src={product.image} alt="" loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-2 pt-2 text-xs font-medium">{productBrand(product.name)}</span><span className="block w-full truncate px-2 text-[11px] text-muted-foreground">{product.retailer}</span><span className="w-full px-2 pb-2 text-xs">₹{product.price.toLocaleString("en-IN")}</span></Button>)}</div>
-         <div className="mx-5 mt-7 border-t border-border pt-5"><Button className="h-12 w-full" disabled={comparison.length === 0} onClick={() => setView("compare")}>Compare my looks ({comparison.length}) <ArrowRight /></Button><p className="mt-3 text-center text-[11px] leading-4 text-muted-foreground">{comparison.length === 0 ? "Generate a virtual look, then heart it to compare. " : ""}Only generated looks appear in your comparison.</p></div>
-    </section>}
+    {view === "try" && active && <ShopLookResult
+      product={active}
+      products={visibleProducts}
+      image={<LookImage person={person} product={active} generated={generated[active.id]} hero />}
+      imageUrl={generated[active.id] ?? person}
+      completed={Boolean(generated[active.id])}
+      generating={generating}
+      saving={savingIds.includes(active.id)}
+      selected={favorites.includes(active.id)}
+      canSave={Boolean(generated[active.id] && stylistComments[active.id])}
+      comment={stylistComments[active.id]}
+      commentLoading={stylistLoading === active.id}
+      commentError={stylistErrors[active.id]}
+      generationError={generationError}
+      comparisonCount={comparison.length}
+      brand={productBrand}
+      onShare={() => void openShare(active)}
+      onSave={() => void favoriteLook(active)}
+      onBuy={() => void openShop(active)}
+      onSelect={selectProduct}
+      onCompare={() => setView("compare")}
+    />}
 
-    {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>
-         <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} comparison /><div className="flex min-h-14 items-center justify-between gap-1 py-2"><div className="min-w-0"><h2 className="truncate font-display text-lg">{productBrand(product.name)}</h2><p className="truncate text-xs text-muted-foreground">{product.retailer} · ₹{product.price.toLocaleString("en-IN")}</p></div><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} title="Remove from comparison" onClick={() => void favoriteLook(product)}><Heart className="fill-primary text-primary" /></Button></div><div className="flex items-center justify-center gap-3"><Button variant="ghost" size="icon" className="size-10" aria-label={`Share ${product.name}`} title="Share" onClick={() => void openShare(product)}><Share2 /></Button><Button variant="ghost" size="icon" className="size-10 text-primary" aria-label={`${product.productUrl ? "Buy" : "Search for"} ${product.name}`} title={product.productUrl ? "Buy" : "Search"} onClick={() => void openShop(product)}><ShoppingBag /></Button></div></article>)}</div>
+    {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><div className="flex items-center justify-between gap-2"><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><Button variant="ghost" size="icon" className="shrink-0" aria-label="Share all looks" title="Share all looks" disabled={!comparison.length} onClick={() => void openComparisonShare()}><Share2 /></Button></div><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>
+         <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} comparison /><div className="flex min-h-14 items-center justify-between gap-1 py-2"><div className="min-w-0"><h2 className="truncate font-display text-lg">{productBrand(product.name)}</h2><p className="truncate text-xs text-muted-foreground">{product.retailer} · ₹{product.price.toLocaleString("en-IN")}</p></div><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} title="Remove from comparison" onClick={() => void favoriteLook(product)}><Heart className="fill-primary text-primary" /></Button></div><div className="flex items-center justify-center gap-3"><Button className="h-10 w-full text-sm" aria-label={`${product.productUrl ? "Buy" : "Search for"} ${product.name}`} onClick={() => void openShop(product)}><ShoppingBag className="size-4" /> {product.productUrl ? "Buy" : "Search"}</Button></div></article>)}</div>
         {comparison.length === 0 && <div className="py-16 text-center"><Heart className="mx-auto mb-3 size-7 text-primary" /><p className="text-sm text-muted-foreground">Your shortlist is empty. Generate a look and heart it to compare here.</p></div>}
          <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">AI visualizations are not fit guarantees · retailer links are for discovery · no partnership implied</p>
     </section>}
@@ -529,7 +612,7 @@ function ShopLook() {
 
     {cameraOpen && <div role="dialog" aria-modal="true" aria-label="Take your selfie" className="fixed inset-0 z-50 flex items-end justify-center bg-scrim"><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Take your selfie</h2><Button variant="ghost" size="icon" aria-label="Cancel selfie" onClick={closeCamera}><X /></Button></div><div className="mt-4 aspect-[3/4] overflow-hidden rounded-md bg-surface">{capturedSelfie ? <img src={capturedSelfie.url} alt="Your captured selfie" className="size-full object-cover" /> : cameraError ? <div className="flex size-full items-center justify-center px-8 text-center text-sm text-muted-foreground">{cameraError}</div> : <video ref={videoRef} autoPlay playsInline muted className="size-full scale-x-[-1] object-cover" />}</div><canvas ref={canvasRef} className="hidden" />{capturedSelfie ? <div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void retakeSelfie()}><Camera /> Retake</Button><Button className="h-12" onClick={useSelfie}><Check /> Use photo</Button></div> : cameraError ? <div className="mt-4 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={closeCamera}>Cancel</Button><Button className="h-12" onClick={() => { closeCamera(); fileRef.current?.click(); }}><Upload /> Upload</Button></div> : <Button className="mt-4 h-12 w-full" onClick={captureSelfie}><Camera /> Capture</Button>}</div></div>}
 
-    {shareProduct && <div role="dialog" aria-modal="true" aria-label={`Share ${shareProduct.name}`} className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setShareId(null); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Share your look</h2><Button variant="ghost" size="icon" aria-label="Close share options" onClick={() => setShareId(null)}><X /></Button></div><p className="mt-2 text-xs leading-5 text-muted-foreground">Share your look with friends on Insta and WhatsApp for feedback &amp; fun :)</p>{lookShareUrl(shareProduct.id) && <p className="mt-3 break-all rounded-md bg-surface px-3 py-2 text-[11px] leading-4 text-muted-foreground">{lookShareUrl(shareProduct.id)}</p>}<div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void shareToInstagram(shareProduct)}><Instagram /> Instagram</Button><Button variant="outline" className="h-12" onClick={() => shareToWhatsApp(shareProduct)}><MessageCircle /> WhatsApp</Button></div><Button variant="outline" className="mt-2 h-12 w-full" onClick={() => void copyLink()}><LinkIcon /> Copy look link</Button>{message && <p role="status" className="mt-3 text-xs text-primary">{message}</p>}</div></div>}
+    {shareProduct && <div role="dialog" aria-modal="true" aria-label={`Share ${shareProduct.name}`} className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setShareId(null); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">{sharingComparison ? "Share your looks" : "Share your look"}</h2><Button variant="ghost" size="icon" aria-label="Close share options" onClick={() => setShareId(null)}><X /></Button></div><p className="mt-2 text-xs leading-5 text-muted-foreground">Share your look with friends on Insta and WhatsApp for feedback &amp; fun :)</p>{!sharingComparison && lookShareUrl(shareProduct.id) && <p className="mt-3 break-all rounded-md bg-surface px-3 py-2 text-[11px] leading-4 text-muted-foreground">{lookShareUrl(shareProduct.id)}</p>}<div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void shareToInstagram(shareProduct)}><Instagram /> Instagram</Button><Button variant="outline" className="h-12" onClick={() => void shareToWhatsApp(shareProduct)}><MessageCircle /> WhatsApp</Button></div><Button variant="outline" className="mt-2 h-12 w-full" onClick={() => void copyLink()}><LinkIcon /> {sharingComparison ? "Copy app link" : "Copy look link"}</Button>{message && <p role="status" className="mt-3 text-xs text-primary">{message}</p>}</div></div>}
     {shopProduct && <div role="dialog" aria-modal="true" aria-label="Thank you for using ShopLook" className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setShopId(null); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Thank you</h2><Button variant="ghost" size="icon" aria-label="Close" onClick={() => setShopId(null)}><X /></Button></div><p className="mt-3 text-sm leading-6 text-muted-foreground">Thank you for using ShopLook. We&apos;ll take you to the retailer to continue shopping.</p><Button className="mt-5 h-12 w-full" onClick={() => continueToShop(shopProduct)}><ShoppingBag /> Continue to {shopProduct.retailer}</Button><Button variant="outline" className="mt-2 h-11 w-full" onClick={() => setShopId(null)}>Stay on ShopLook</Button></div></div>}
     {message && !shareProduct && !shopProduct && <p role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto max-w-sm rounded-md bg-overlay px-4 py-3 text-center text-sm text-overlay-foreground shadow-float">{message}</p>}
     <AuthDialog open={authOpen} onOpenChange={(open) => { setAuthOpen(open); if (!open) setPendingAction(null); }} onSignedIn={continuePendingAction} />

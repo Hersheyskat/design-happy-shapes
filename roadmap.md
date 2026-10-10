@@ -1,5 +1,18 @@
 # Roadmap
 
+- [x] Replace the bottom Shop tab with a Chat page sharing the existing private stylist conversation; verify history continuation and new questions.
+
+- [x] Turn Stylist's take into an interactive, account-persisted ongoing chat; verify replies, follow-up context, privacy, and reload restoration.
+- [x] Add one Share action for all comparison looks; retain individual Buy actions and sign-in before retailer navigation.
+
+- [x] Replace the result carousel with a vertically scrollable shopping grid and return to the ShopLook photo when a product is tapped.
+
+- [x] Shrink the Try another look heading and spacing and visually remove the Search clothing label while preserving search accessibility.
+
+- [x] Add a clearly labelled clothing search to the result carousel, filtering by clothing type, product name, or retailer without changing saved looks or generation.
+
+- [x] Redesign the result screen with a prominent photo, immediate Share/heart-Save/Buy actions, swipeable try-on products, collapsible Stylist's take, and full-screen image viewing; preserve existing generation and saving.
+
 - [x] Add the demo-first photo upload and optional style note.
 - [x] Show a generated virtual look after explicit request, with tappable catalog choices and the original photo as a pending/failure fallback.
 - [x] Add favorites, scrollable four-up comparison, share handoffs, and retailer shopping search.
@@ -37,3 +50,5 @@
 - [x] Restore an explicit private Save action for completed ShopLooks, with sign-in continuation and Saved archive access.
 - [x] Make the heart the single Save my look action and remove the separate save button.
 - [x] Allow multiple hearted ShopLooks to save independently, with each heart filling only after its own upload succeeds.
+
+- [x] Make the main generated ShopLook smaller while keeping the full outfit visible and revealing the product listing below.

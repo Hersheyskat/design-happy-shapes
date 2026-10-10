@@ -10,11 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as ApiGenerateLookRouteImport } from './routes/api/generate-look'
+import { Route as ApiStylistChatRouteImport } from './routes/api/stylist-chat'
 import { Route as ApiSuggestCatalogRouteImport } from './routes/api/suggest-catalog'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as LSlugRouteImport } from './routes/l.$slug'
@@ -25,6 +27,11 @@ import { Route as SavedLookLookIdRouteImport } from './routes/saved-look.$lookId
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DiscoverRoute = DiscoverRouteImport.update({
@@ -50,6 +57,11 @@ const SavedRoute = SavedRouteImport.update({
 const ApiGenerateLookRoute = ApiGenerateLookRouteImport.update({
   id: '/api/generate-look',
   path: '/api/generate-look',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStylistChatRoute = ApiStylistChatRouteImport.update({
+  id: '/api/stylist-chat',
+  path: '/api/stylist-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSuggestCatalogRoute = ApiSuggestCatalogRouteImport.update({
@@ -85,11 +97,13 @@ const SavedLookLookIdRoute = SavedLookLookIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
   '/discover': typeof DiscoverRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
+  '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/l/$slug': typeof LSlugRoute
@@ -99,11 +113,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
   '/discover': typeof DiscoverRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
+  '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/l/$slug': typeof LSlugRoute
@@ -114,11 +130,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
   '/discover': typeof DiscoverRoute
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
+  '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/l/$slug': typeof LSlugRoute
@@ -130,11 +148,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/chat'
     | '/discover'
     | '/profile'
     | '/progress'
     | '/saved'
     | '/api/generate-look'
+    | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/auth/callback'
     | '/l/$slug'
@@ -144,11 +164,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/chat'
     | '/discover'
     | '/profile'
     | '/progress'
     | '/saved'
     | '/api/generate-look'
+    | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/auth/callback'
     | '/l/$slug'
@@ -158,11 +180,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/chat'
     | '/discover'
     | '/profile'
     | '/progress'
     | '/saved'
     | '/api/generate-look'
+    | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/auth/callback'
     | '/l/$slug'
@@ -173,11 +197,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChatRoute: typeof ChatRoute
   DiscoverRoute: typeof DiscoverRoute
   ProfileRoute: typeof ProfileRouteWithChildren
   ProgressRoute: typeof ProgressRoute
   SavedRoute: typeof SavedRoute
   ApiGenerateLookRoute: typeof ApiGenerateLookRoute
+  ApiStylistChatRoute: typeof ApiStylistChatRoute
   ApiSuggestCatalogRoute: typeof ApiSuggestCatalogRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   LSlugRoute: typeof LSlugRoute
@@ -192,6 +218,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/discover': {
@@ -227,6 +260,13 @@ declare module '@tanstack/react-router' {
       path: '/api/generate-look'
       fullPath: '/api/generate-look'
       preLoaderRoute: typeof ApiGenerateLookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stylist-chat': {
+      id: '/api/stylist-chat'
+      path: '/api/stylist-chat'
+      fullPath: '/api/stylist-chat'
+      preLoaderRoute: typeof ApiStylistChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/suggest-catalog': {
@@ -287,11 +327,13 @@ const ProfileRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChatRoute: ChatRoute,
   DiscoverRoute: DiscoverRoute,
   ProfileRoute: ProfileRouteWithChildren,
   ProgressRoute: ProgressRoute,
   SavedRoute: SavedRoute,
   ApiGenerateLookRoute: ApiGenerateLookRoute,
+  ApiStylistChatRoute: ApiStylistChatRoute,
   ApiSuggestCatalogRoute: ApiSuggestCatalogRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   LSlugRoute: LSlugRoute,

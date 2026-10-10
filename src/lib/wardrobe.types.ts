@@ -10,4 +10,4 @@ export const outfitSchema = z.object({
 });
 export const outfitPlanSchema = z.object({ outfits: z.array(outfitSchema) });
 export type WardrobeOutfit = z.infer<typeof outfitSchema>;
-export type WardrobeItem = { id: string; name: string; category: string; image_path: string; imageUrl?: string | null | undefined };
+export type WardrobeItem = { id: string; name: string; category: string; image_path: string; imageUrl?: string | undefined };

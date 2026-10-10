@@ -62,7 +62,7 @@ function WardrobePage() {
     const rows = await getWardrobe();
     const urls = rows.length ? await supabase.storage.from("shoplook-media").createSignedUrls(rows.map((row) => row.image_path), 3600) : null;
     const signed = new Map(urls?.data?.map((entry) => [entry.path, entry.signedUrl]) ?? []);
-    setItems(rows.map((row) => ({ ...row, imageUrl: signed.get(row.image_path) })));
+    setItems(rows.map((row) => ({ ...row, imageUrl: signed.get(row.image_path) ?? undefined })));
     setSelected((current) => current.filter((id) => rows.some((row) => row.id === id)));
   };
   useEffect(() => {

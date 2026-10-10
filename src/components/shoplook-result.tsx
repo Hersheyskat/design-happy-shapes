@@ -39,12 +39,14 @@ export function ShopLookResult(props: Props) {
     return terms.every((term) => text.includes(term));
   });
   const { product, completed, generating, selected, saving } = props;
+  const showCompare = saving || props.comparisonCount > 0;
   return <section className="bg-card pb-8 text-foreground">
     <div ref={imageRef} className="relative scroll-mt-16">
       {props.image}
       <Button variant="ghost" className="absolute inset-0 h-full w-full rounded-none p-0 hover:bg-transparent" aria-label="View your look full-screen" onClick={() => setImageOpen(true)}>
         <span className="absolute bottom-3 right-3 grid size-9 place-items-center rounded-full bg-overlay text-overlay-foreground"><Expand /></span>
       </Button>
+      <Button variant="ghost" size="icon" className={`absolute right-3 z-10 size-9 rounded-full bg-overlay text-overlay-foreground hover:bg-overlay hover:text-overlay-foreground ${generating ? "top-14" : "top-3"}`} aria-label="Share your look" title="Share your look" disabled={!completed} onClick={props.onShare}><Share2 className="size-4" /></Button>
       {generating && <div role="status" className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-5 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating your ShopLook…</div>}
     </div>
 
@@ -53,8 +55,8 @@ export function ShopLookResult(props: Props) {
         <div className="min-w-0"><h1 className="truncate text-sm font-semibold leading-5" title={product.name}>{props.brand(product.name)}</h1><p className="text-[11px] leading-4 text-muted-foreground">{product.retailer}</p></div>
         <p className="shrink-0 text-sm font-semibold leading-5 text-primary">₹{product.price.toLocaleString("en-IN")}</p>
       </div>
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        <Button variant="outline" className="h-9 px-2 text-xs" disabled={!completed} onClick={props.onShare}><Share2 /> Share</Button>
+      <div className={`mt-2 grid gap-2 ${showCompare ? "grid-cols-3" : "grid-cols-2"}`}>
+        {showCompare && <Button variant="outline" className="h-9 px-2 text-xs" aria-label={`Compare my looks (${props.comparisonCount})`} disabled={props.comparisonCount === 0} onClick={props.onCompare}>Compare{props.comparisonCount > 0 ? ` (${props.comparisonCount})` : ""} <ArrowRight /></Button>}
         <Button variant="outline" className={`h-9 px-2 text-xs ${selected ? "border-primary bg-primary-soft text-primary" : ""}`} disabled={!props.canSave || saving} aria-label={selected ? `Remove ${product.name} from comparison` : `Save ${product.name} to my looks`} aria-pressed={selected} onClick={props.onSave}>{saving ? <LoaderCircle className="animate-spin" /> : <Heart className={selected ? "fill-primary" : ""} />}{saving ? "Saving" : selected ? "Saved" : "Save"}</Button>
         <Button className="h-9 px-2 text-xs" onClick={props.onBuy}><ShoppingBag /> {product.productUrl ? "Buy" : "Search"}</Button>
       </div>
@@ -90,7 +92,6 @@ export function ShopLookResult(props: Props) {
       <summary className="flex cursor-pointer list-none items-center gap-2 py-4 text-sm font-semibold text-primary [&::-webkit-details-marker]:hidden"><Sparkles className="size-4" /> Stylist's take <ChevronDown className="ml-auto size-4 transition-transform group-open:rotate-180" /></summary>
       <div className="pb-4">{props.commentLoading ? <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" /> Reviewing your look…</p> : props.comment ? <p className="text-sm leading-6">{props.comment}</p> : props.commentError ? <p role="alert" className="text-sm text-muted-foreground">{props.commentError}</p> : null}</div>
     </details>}
-    <div className="px-5 pt-5"><Button variant="outline" className="h-11 w-full" disabled={props.comparisonCount === 0} onClick={props.onCompare}>Compare my looks ({props.comparisonCount}) <ArrowRight /></Button></div>
 
     <Dialog open={imageOpen} onOpenChange={setImageOpen}>
       <DialogContent aria-describedby={undefined} className="h-dvh max-h-dvh w-full max-w-[430px] min-h-0 overflow-hidden gap-0 rounded-none border-0 bg-card p-2 sm:rounded-none [&>button]:z-10 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100">

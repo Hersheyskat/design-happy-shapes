@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Add private Wardrobe uploads, occasion outfit suggestions, chosen-look creation, missing-piece shopping, and verify account persistence end-to-end.
+- [x] Add private Wardrobe uploads, occasion outfit suggestions, chosen-look creation, missing-piece shopping, and verify account persistence end-to-end.
 - [x] Generate stylist-created coordinated looks instead of garment-only selfie swaps; framing is flexible and head-to-toe is optional rather than compulsory.
 - [x] Capture originating ShopLook photos and product names in product-chat messages and restore them in Chat; verified private thumbnails after reload and removed verification exchanges.
 

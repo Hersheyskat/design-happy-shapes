@@ -23,5 +23,5 @@
 
 - Keep the result presentation isolated from generation and engagement logic, with a viewport-aware image hero and full-screen viewer; preserve comparison image proportions so result sizing never changes shortlist framing.
 - Keep result product browsing in the presentation component and reuse the existing selection callback for try-on; scrolling to the image must not change generation or saving behavior.
-- Keep stylist chat in an isolated result dialog, backed by one owner-RLS conversation per account and an authenticated streaming server route; this preserves generation and engagement behavior while restoring private history across devices.
+- Reuse the same stylist chat surface in the isolated result dialog and standalone /chat page, backed by one owner-RLS conversation per account and an authenticated streaming server route; this preserves generation and engagement behavior while restoring the same private history across entry points and devices.
 - Load authoritative stylist history server-side and store completed UI messages with revision checks; this prevents cross-window overwrites and keeps follow-up context intact.

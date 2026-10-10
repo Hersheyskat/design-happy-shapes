@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Replace the bottom Shop tab with a Chat page sharing the existing private stylist conversation; verify history continuation and new questions.
+
 - [x] Turn Stylist's take into an interactive, account-persisted ongoing chat; verify replies, follow-up context, privacy, and reload restoration.
 - [x] Add one Share action for all comparison looks; retain individual Buy actions and sign-in before retailer navigation.
 

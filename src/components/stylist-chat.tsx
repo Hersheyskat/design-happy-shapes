@@ -74,9 +74,9 @@ export function StylistChat(props: Props) {
         </span>
         <div>
           {props.page ? (
-            <h1 className="text-base font-semibold">Your stylist</h1>
+            <h1 className="text-base font-semibold">Your AI Stylist</h1>
           ) : (
-            <DialogTitle className="text-base">Your stylist</DialogTitle>
+            <DialogTitle className="text-base">Your AI Stylist</DialogTitle>
           )}
           <p className="text-xs text-muted-foreground">ShopLook</p>
         </div>

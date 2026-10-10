@@ -25,14 +25,10 @@ export const Route = createFileRoute("/api/wardrobe-look")({ server: { handlers:
   const outfit = parsed.data;
   const rows = await client.from("wardrobe_items").select("id,name,image_path").eq("user_id", userId).in("id", outfit.ids);
   if (rows.error || rows.data.length !== new Set(outfit.ids).size) return Response.json({ message: "A wardrobe piece is no longer available." }, { status: 400 });
-  const cooldown = await client.rpc("claim_ai_generation_cooldown", { _client_hash: `wardrobe:${userId}` });
-  // This privileged cooldown RPC is deliberately service-only; wardrobe has its own authenticated claim below.
-  if (cooldown.error) {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const claim = await supabaseAdmin.rpc("claim_ai_generation_cooldown", { _client_hash: `wardrobe:${userId}` });
-    if (claim.error) return Response.json({ message: "Look creation is temporarily unavailable." }, { status: 503 });
-    if (!claim.data) return Response.json({ message: "Please wait a moment before creating another look." }, { status: 429 });
-  } else if (!cooldown.data) return Response.json({ message: "Please wait a moment before creating another look." }, { status: 429 });
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const claim = await supabaseAdmin.rpc("claim_ai_generation_cooldown", { _client_hash: `wardrobe:${userId}` });
+  if (claim.error) return Response.json({ message: "Look creation is temporarily unavailable." }, { status: 503 });
+  if (!claim.data) return Response.json({ message: "Please wait a moment before creating another look." }, { status: 429 });
   const images = new FormData();
   images.append("image[]", person);
   const names: string[] = [];

@@ -60,16 +60,15 @@ function WardrobePage() {
 
   const reload = async () => {
     const rows = await getWardrobe();
-    const urls = await supabase.storage.from("shoplook-media").createSignedUrls(rows.map((row) => row.image_path), 3600);
-    const signed = new Map(urls.data?.map((entry) => [entry.path, entry.signedUrl]) ?? []);
+    const urls = rows.length ? await supabase.storage.from("shoplook-media").createSignedUrls(rows.map((row) => row.image_path), 3600) : null;
+    const signed = new Map(urls?.data?.map((entry) => [entry.path, entry.signedUrl]) ?? []);
     setItems(rows.map((row) => ({ ...row, imageUrl: signed.get(row.image_path) })));
     setSelected((current) => current.filter((id) => rows.some((row) => row.id === id)));
   };
   useEffect(() => {
     let alive = true;
     void supabase.auth.getUser().then(({ data }) => { if (alive) { setUserId(data.user?.id ?? null); setLoading(false); } });
-    const { data } = supabase.auth.onAuthStateChange((event, session) => { if (event === "SIGNED_IN" || event === "SIGNED_OUT") setUserId(session?.user.id ?? null); });
-    return () => { alive = false; data.subscription.unsubscribe(); };
+    return () => { alive = false; };
   }, []);
   useEffect(() => {
     if (!userId) { setItems([]); setSelected([]); setOutfits([]); setResult(null); return; }

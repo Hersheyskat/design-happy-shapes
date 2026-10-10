@@ -15,6 +15,7 @@ import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as SavedRouteImport } from './routes/saved'
+import { Route as WardrobeRouteImport } from './routes/wardrobe'
 import { Route as ApiGenerateLookRouteImport } from './routes/api/generate-look'
 import { Route as ApiStylistChatRouteImport } from './routes/api/stylist-chat'
 import { Route as ApiSuggestCatalogRouteImport } from './routes/api/suggest-catalog'
@@ -51,6 +52,11 @@ const ProgressRoute = ProgressRouteImport.update({
 const SavedRoute = SavedRouteImport.update({
   id: '/saved',
   path: '/saved',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WardrobeRoute = WardrobeRouteImport.update({
+  id: '/wardrobe',
+  path: '/wardrobe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGenerateLookRoute = ApiGenerateLookRouteImport.update({
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
+  '/wardrobe': typeof WardrobeRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
+  '/wardrobe': typeof WardrobeRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRouteWithChildren
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
+  '/wardrobe': typeof WardrobeRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/saved'
+    | '/wardrobe'
     | '/api/generate-look'
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/saved'
+    | '/wardrobe'
     | '/api/generate-look'
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/progress'
     | '/saved'
+    | '/wardrobe'
     | '/api/generate-look'
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
@@ -190,6 +202,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRouteWithChildren
   ProgressRoute: typeof ProgressRoute
   SavedRoute: typeof SavedRoute
+  WardrobeRoute: typeof WardrobeRoute
   ApiGenerateLookRoute: typeof ApiGenerateLookRoute
   ApiStylistChatRoute: typeof ApiStylistChatRoute
   ApiSuggestCatalogRoute: typeof ApiSuggestCatalogRoute
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/saved'
       fullPath: '/saved'
       preLoaderRoute: typeof SavedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wardrobe': {
+      id: '/wardrobe'
+      path: '/wardrobe'
+      fullPath: '/wardrobe'
+      preLoaderRoute: typeof WardrobeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/generate-look': {
@@ -312,6 +332,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRouteWithChildren,
   ProgressRoute: ProgressRoute,
   SavedRoute: SavedRoute,
+  WardrobeRoute: WardrobeRoute,
   ApiGenerateLookRoute: ApiGenerateLookRoute,
   ApiStylistChatRoute: ApiStylistChatRoute,
   ApiSuggestCatalogRoute: ApiSuggestCatalogRoute,

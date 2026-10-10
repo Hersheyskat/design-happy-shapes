@@ -109,6 +109,7 @@ export function ShopLookResult(props: Props) {
     </section>
 
 
+    <StylistChat open={chatOpen} onOpenChange={setChatOpen} productName={product.name} comment={props.comment ?? ""} imageUrl={completed ? props.imageUrl : ""} />
     <Dialog open={imageOpen} onOpenChange={setImageOpen}>
       <DialogContent aria-describedby={undefined} className="h-dvh max-h-dvh w-full max-w-[430px] min-h-0 overflow-hidden gap-0 rounded-none border-0 bg-card p-2 sm:rounded-none [&>button]:z-10 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center [&>button]:rounded-full [&>button]:bg-background [&>button]:opacity-100">
         <DialogTitle className="sr-only">Your ShopLook full-screen</DialogTitle>

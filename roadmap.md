@@ -1,5 +1,5 @@
 # Roadmap
-- [ ] Capture originating ShopLook photos and product names in product-chat messages and restore them in Chat.
+- [x] Capture originating ShopLook photos and product names in product-chat messages and restore them in Chat; verified private thumbnails after reload and removed verification exchanges.
 
 - [x] Replace the bottom Shop tab with a Chat page sharing the existing private stylist conversation; verify history continuation and new questions.
 

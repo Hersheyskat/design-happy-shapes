@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadStylistChat } from "@/lib/stylist-chat.functions";
 
 type Props = {
+  page?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productName: string;
@@ -62,13 +63,7 @@ export function StylistChat(props: Props) {
       cancelled = true;
     };
   }, [props.open, attempt, load]);
-  return (
-    <>
-      <Dialog open={props.open && !authOpen} onOpenChange={props.onOpenChange}>
-        <DialogContent
-          aria-describedby={undefined}
-          className="flex h-[min(760px,calc(100dvh-1rem))] max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-[430px] flex-col gap-0 overflow-hidden rounded-lg bg-card p-0"
-        >
+  const content = <>
           <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-4 pr-12">
             <span
               className="grid size-9 place-items-center rounded-full bg-primary-soft font-semibold text-primary"
@@ -77,7 +72,7 @@ export function StylistChat(props: Props) {
               SL
             </span>
             <div>
-              <DialogTitle className="text-base">Your stylist</DialogTitle>
+              {props.page ? <h1 className="text-base font-semibold">Your stylist</h1> : <DialogTitle className="text-base">Your stylist</DialogTitle>}
               <p className="text-xs text-muted-foreground">ShopLook</p>
             </div>
           </div>
@@ -112,8 +107,16 @@ export function StylistChat(props: Props) {
               )}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+    </>;
+  return (
+    <>
+      {props.page ? (
+        <section className="flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-card">{content}</section>
+      ) : (
+        <Dialog open={props.open && !authOpen} onOpenChange={props.onOpenChange}>
+          <DialogContent aria-describedby={undefined} className="flex h-[min(760px,calc(100dvh-1rem))] max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-[430px] flex-col gap-0 overflow-hidden rounded-lg bg-card p-0">{content}</DialogContent>
+        </Dialog>
+      )}
       <AuthDialog
         open={authOpen}
         onOpenChange={setAuthOpen}
@@ -188,7 +191,7 @@ function StylistConversation({
       setPreparing(false);
       await sendMessage(
         { text: text.trim() },
-        { body: { look: { productName, comment, ...(image ? { image } : {}) } } },
+        { body: productName || comment || image ? { look: { productName, comment, ...(image ? { image } : {}) } } : {} },
       );
     } catch (reason) {
       setRequestError(
@@ -258,7 +261,7 @@ function StylistConversation({
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             maxLength={2000}
-            placeholder="What shoes would work with this?"
+            placeholder={imageUrl ? "What shoes would work with this?" : "Ask about outfits, colours or styling…"}
             aria-label="Ask your stylist"
             className="min-h-16 text-sm"
           />

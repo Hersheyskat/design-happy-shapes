@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Compass, Heart, Home, UserRound } from "lucide-react";
+import { MessageCircle, Heart, Home, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function ShopLookShell({ children }: { children: ReactNode }) {
@@ -10,7 +10,7 @@ export function ShopLookShell({ children }: { children: ReactNode }) {
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto grid h-16 max-w-[430px] grid-cols-4 border-x border-t border-border bg-background/95 backdrop-blur" aria-label="ShopLook navigation">
         <NavItem to="/" label="Look" icon={<Home />} />
-        <NavItem to="/discover" label="Shop" icon={<Compass />} />
+        <NavItem to="/chat" label="Chat" icon={<MessageCircle />} />
         <NavItem to="/saved" label="Saved" icon={<Heart />} />
         <NavItem to="/profile" label="Profile" icon={<UserRound />} />
       </nav>
@@ -18,7 +18,7 @@ export function ShopLookShell({ children }: { children: ReactNode }) {
   );
 }
 
-function NavItem({ to, label, icon }: { to: "/" | "/discover" | "/saved" | "/profile"; label: string; icon: ReactNode }) {
+function NavItem({ to, label, icon }: { to: "/" | "/chat" | "/saved" | "/profile"; label: string; icon: ReactNode }) {
   return (
     <Link to={to} activeOptions={{ exact: to === "/" }} className="flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold text-muted-foreground [&_svg]:size-5" activeProps={{ className: "text-primary" }}>
       {icon}<span>{label}</span>

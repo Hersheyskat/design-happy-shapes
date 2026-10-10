@@ -41,7 +41,7 @@ export function ShopLookResult(props: Props) {
     setStylistPinned(false);
     setStylistOpen(Boolean(stylistKey));
     if (!stylistKey) return;
-    const timer = window.setTimeout(() => setStylistOpen(false), 5000);
+    const timer = window.setTimeout(() => setStylistOpen(false), 3000);
     return () => window.clearTimeout(timer);
   }, [stylistKey]);
   const normalize = (value: string) => value.toLowerCase().replace(/t[\s-]*shirts?\b/g, "tshirt").replace(/\bshirts\b/g, "shirt").replace(/\bjackets\b/g, "jacket").replace(/\bdresses\b/g, "dress").replace(/\bjeans\b/g, "jean");

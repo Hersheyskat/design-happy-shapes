@@ -34,7 +34,8 @@ export async function handleStylistChat(request: Request) {
   if (initError) return fail("Your private chat could not be opened.", 500);
   const { data: row, error: readError } = await client.from("stylist_conversations").select("messages,revision").eq("user_id", userId).single();
   if (readError || !row) return fail("Your private chat could not load.", 500);
-  const stored = await validateUIMessages({ messages: row.messages as unknown as UIMessage[] });
+  const rawHistory = row.messages as unknown as UIMessage[];
+  const stored = rawHistory.length ? await validateUIMessages({ messages: rawHistory }) : [];
   if (stored.some((message) => message.id === last.id)) return fail("That question has already been sent. Ask a new question to continue.", 409);
   const userMessage: UIMessage = { id: last.id, role: "user", parts: [{ type: "text", text }], ...(input.look ? { metadata: { productName: input.look.productName, comment: input.look.comment } } : {}) };
   const messages = [...stored, userMessage];

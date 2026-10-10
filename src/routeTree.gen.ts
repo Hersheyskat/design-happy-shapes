@@ -18,6 +18,7 @@ import { Route as SavedRouteImport } from './routes/saved'
 import { Route as ApiGenerateLookRouteImport } from './routes/api/generate-look'
 import { Route as ApiStylistChatRouteImport } from './routes/api/stylist-chat'
 import { Route as ApiSuggestCatalogRouteImport } from './routes/api/suggest-catalog'
+import { Route as ApiWardrobeLookRouteImport } from './routes/api/wardrobe-look'
 import { Route as LookLookIdRouteImport } from './routes/look.$lookId'
 import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
 import { Route as SavedLookLookIdRouteImport } from './routes/saved-look.$lookId'
@@ -67,6 +68,11 @@ const ApiSuggestCatalogRoute = ApiSuggestCatalogRouteImport.update({
   path: '/api/suggest-catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWardrobeLookRoute = ApiWardrobeLookRouteImport.update({
+  id: '/api/wardrobe-look',
+  path: '/api/wardrobe-look',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LookLookIdRoute = LookLookIdRouteImport.update({
   id: '/look/$lookId',
   path: '/look/$lookId',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
+  '/api/wardrobe-look': typeof ApiWardrobeLookRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/saved-look/$lookId': typeof SavedLookLookIdRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
+  '/api/wardrobe-look': typeof ApiWardrobeLookRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/saved-look/$lookId': typeof SavedLookLookIdRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/api/generate-look': typeof ApiGenerateLookRoute
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
+  '/api/wardrobe-look': typeof ApiWardrobeLookRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/saved-look/$lookId': typeof SavedLookLookIdRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/api/generate-look'
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
+    | '/api/wardrobe-look'
     | '/look/$lookId'
     | '/profile/$handle'
     | '/saved-look/$lookId'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/api/generate-look'
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
+    | '/api/wardrobe-look'
     | '/look/$lookId'
     | '/profile/$handle'
     | '/saved-look/$lookId'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/api/generate-look'
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
+    | '/api/wardrobe-look'
     | '/look/$lookId'
     | '/profile/$handle'
     | '/saved-look/$lookId'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   ApiGenerateLookRoute: typeof ApiGenerateLookRoute
   ApiStylistChatRoute: typeof ApiStylistChatRoute
   ApiSuggestCatalogRoute: typeof ApiSuggestCatalogRoute
+  ApiWardrobeLookRoute: typeof ApiWardrobeLookRoute
   LookLookIdRoute: typeof LookLookIdRoute
   SavedLookLookIdRoute: typeof SavedLookLookIdRoute
 }
@@ -250,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSuggestCatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/wardrobe-look': {
+      id: '/api/wardrobe-look'
+      path: '/api/wardrobe-look'
+      fullPath: '/api/wardrobe-look'
+      preLoaderRoute: typeof ApiWardrobeLookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/look/$lookId': {
       id: '/look/$lookId'
       path: '/look/$lookId'
@@ -295,6 +315,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGenerateLookRoute: ApiGenerateLookRoute,
   ApiStylistChatRoute: ApiStylistChatRoute,
   ApiSuggestCatalogRoute: ApiSuggestCatalogRoute,
+  ApiWardrobeLookRoute: ApiWardrobeLookRoute,
   LookLookIdRoute: LookLookIdRoute,
   SavedLookLookIdRoute: SavedLookLookIdRoute,
 }

@@ -443,6 +443,7 @@ export type Database = {
           product_retailer: string | null
           product_url: string | null
           published_at: string | null
+          share_slug: string | null
           shopper_image_path: string
           style_note: string
           summary: string
@@ -466,6 +467,7 @@ export type Database = {
           product_retailer?: string | null
           product_url?: string | null
           published_at?: string | null
+          share_slug?: string | null
           shopper_image_path: string
           style_note?: string
           summary: string
@@ -489,6 +491,7 @@ export type Database = {
           product_retailer?: string | null
           product_url?: string | null
           published_at?: string | null
+          share_slug?: string | null
           shopper_image_path?: string
           style_note?: string
           summary?: string

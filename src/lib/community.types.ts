@@ -20,6 +20,7 @@ export type SavedLookDto = {
   mood: StyleMood;
   advice: StyleAdvice;
   isPublished: boolean;
+  shareSlug: string | null;
   createdAt: string;
   items: Array<{ id: string; label: string; searchTerm: string; destinationUrl: string; source: "submitted" | "suggested" }>;
   likeCount: number;

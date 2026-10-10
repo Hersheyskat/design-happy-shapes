@@ -85,6 +85,38 @@ function profileName(firstName: string, surname: string) {
   return `${firstName.trim()} ${surname.trim()}`.trim().slice(0, 60);
 }
 
+function slugifyLookName(name: string) {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32);
+  return slug || "look";
+}
+
+function randomSlugSuffix(length = 6) {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+}
+
+function buildShareSlug(productName: string | null | undefined) {
+  const base = slugifyLookName(productName ?? "look");
+  return `${base}-${randomSlugSuffix()}`.slice(0, 48);
+}
+
+async function mintShareSlug(
+  supabase: SupabaseClient<Database>,
+  productName: string | null | undefined,
+) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const shareSlug = buildShareSlug(productName);
+    const existing = await supabase.from("saved_looks").select("id").eq("share_slug", shareSlug).maybeSingle();
+    if (!existing.data) return shareSlug;
+  }
+  return `look-${randomSlugSuffix(10)}`;
+}
+
 export const ensureMyProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -140,18 +172,30 @@ export const saveMyLook = createServerFn({ method: "POST" })
     const catalog = data.catalogProductId ? await context.supabase.from("catalog_products").select("id,product_name,retailer,price,currency,product_url").eq("id", data.catalogProductId).eq("is_active", true).eq("availability", "available").single() : null;
     if (catalog?.error) throw new Error("This product is no longer available in the catalogue.");
     const item = catalog?.data;
-    const inserted = await context.supabase.from("saved_looks").insert({
-      user_id: context.userId, shopper_image_path: data.shopperImagePath, product_image_path: data.productImagePath,
-      product_url: item?.product_url ?? data.productUrl, catalog_product_id: item?.id ?? null, product_name: item?.product_name ?? null, product_retailer: item?.retailer ?? null, product_price: item?.price ?? null, product_currency: item?.currency ?? null, style_note: data.styleNote, mood: data.mood, headline: item?.product_name ?? "My ShopLook", summary: data.stylistComment,
-      colors: [] as Json, adjustments: [] as Json,
-    }).select("id").single();
-    if (inserted.error) throw new Error(inserted.error.message);
+    let savedId = "";
+    let shareSlug = "";
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const nextSlug = await mintShareSlug(context.supabase, item?.product_name ?? "My ShopLook");
+      const inserted = await context.supabase.from("saved_looks").insert({
+        user_id: context.userId, shopper_image_path: data.shopperImagePath, product_image_path: data.productImagePath,
+        product_url: item?.product_url ?? data.productUrl, catalog_product_id: item?.id ?? null, product_name: item?.product_name ?? null, product_retailer: item?.retailer ?? null, product_price: item?.price ?? null, product_currency: item?.currency ?? null, style_note: data.styleNote, mood: data.mood, headline: item?.product_name ?? "My ShopLook", summary: data.stylistComment,
+        share_slug: nextSlug,
+        colors: [] as Json, adjustments: [] as Json,
+      }).select("id, share_slug").single();
+      if (!inserted.error && inserted.data.share_slug) {
+        savedId = inserted.data.id;
+        shareSlug = inserted.data.share_slug;
+        break;
+      }
+      if (inserted.error && inserted.error.code !== "23505") throw new Error(inserted.error.message);
+    }
+    if (!savedId || !shareSlug) throw new Error("This look could not be saved.");
     await context.supabase.from("shopper_events").insert({
       event_type: "look_saved",
       actor_type: "auth",
       user_id: context.userId,
       catalog_product_id: item?.id ?? null,
-      saved_look_id: inserted.data.id,
+      saved_look_id: savedId,
       channel: "heart",
       metadata: {
         product_name: item?.product_name ?? null,
@@ -159,16 +203,54 @@ export const saveMyLook = createServerFn({ method: "POST" })
         price: item?.price ?? null,
         currency: item?.currency ?? null,
         product_url: item?.product_url ?? data.productUrl,
+        share_slug: shareSlug,
       },
     });
     const rows = [
-      ...((item?.product_url ?? data.productUrl) ? [{ look_id: inserted.data.id, user_id: context.userId, label: item?.product_name ?? "Original product", search_term: "Original product", destination_url: (item?.product_url ?? data.productUrl)!, source: "submitted", display_order: 0 }] : []),
+      ...((item?.product_url ?? data.productUrl) ? [{ look_id: savedId, user_id: context.userId, label: item?.product_name ?? "Original product", search_term: "Original product", destination_url: (item?.product_url ?? data.productUrl)!, source: "submitted", display_order: 0 }] : []),
     ];
     if (rows.length) {
       const items = await context.supabase.from("saved_items").insert(rows);
       if (items.error) throw new Error(items.error.message);
     }
-    return { id: inserted.data.id };
+    return { id: savedId, shareSlug };
+  });
+
+export const ensureLookShareSlug = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await ensureProfile(context);
+    const existing = await context.supabase.from("saved_looks").select("id, share_slug, product_name").eq("id", data.id).eq("user_id", context.userId).single();
+    if (existing.error) throw new Error(existing.error.message);
+    if (existing.data.share_slug) return { id: existing.data.id, shareSlug: existing.data.share_slug };
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const shareSlug = await mintShareSlug(context.supabase, existing.data.product_name);
+      const updated = await context.supabase.from("saved_looks").update({ share_slug: shareSlug }).eq("id", data.id).eq("user_id", context.userId).select("id, share_slug").single();
+      if (!updated.error && updated.data.share_slug) return { id: updated.data.id, shareSlug: updated.data.share_slug };
+      if (updated.error && updated.error.code !== "23505") throw new Error(updated.error.message);
+    }
+    throw new Error("This look could not get a share link.");
+  });
+
+export const getSharedLook = createServerFn({ method: "GET" })
+  .inputValidator((input) => z.object({ slug: z.string().trim().min(6).max(48).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/) }).parse(input))
+  .handler(async ({ data }) => {
+    const client = publicClient();
+    const result = await client.from("saved_looks").select("*, profiles!saved_looks_user_id_fkey(handle, display_name), saved_items(*)").eq("share_slug", data.slug).eq("is_removed", false).maybeSingle();
+    if (result.error) throw new Error(result.error.message);
+    if (!result.data) throw new Error("Look not found.");
+    const shopperImageUrl = (await signedUrl(client, result.data.shopper_image_path)) ?? "";
+    if (!shopperImageUrl) throw new Error("Look not found.");
+    return mapLook(
+      result.data,
+      result.data.saved_items,
+      result.data.profiles,
+      shopperImageUrl,
+      await signedUrl(client, result.data.product_image_path),
+      0,
+      0,
+    );
   });
 
 async function ensureProfile(context: { supabase: SupabaseClient<Database>; userId: string; claims: { email?: unknown; user_metadata?: unknown } }) {
@@ -225,7 +307,7 @@ export const listDiscoverLooks = createServerFn({ method: "GET" }).handler(async
 });
 
 function mapLook(row: Database["public"]["Tables"]["saved_looks"]["Row"], items: Database["public"]["Tables"]["saved_items"]["Row"][], profile: { handle: string; display_name: string }, shopperImageUrl: string, productImageUrl: string | null, likeCount: number, commentCount: number): SavedLookDto {
-  return { id: row.id, userId: row.user_id, handle: profile.handle, displayName: profile.display_name, shopperImageUrl, productImageUrl, productUrl: row.product_url, catalogProductId: row.catalog_product_id, productName: row.product_name, productRetailer: row.product_retailer, productPrice: row.product_price, productCurrency: row.product_currency, styleNote: row.style_note, mood: z.enum(styleMoods).parse(row.mood), advice: readAdvice(row, items), isPublished: row.is_published, createdAt: row.created_at, items: items.map((item) => ({ id: item.id, label: item.label, searchTerm: item.search_term, destinationUrl: item.destination_url, source: item.source === "submitted" ? "submitted" : "suggested" })), likeCount, commentCount };
+  return { id: row.id, userId: row.user_id, handle: profile.handle, displayName: profile.display_name, shopperImageUrl, productImageUrl, productUrl: row.product_url, catalogProductId: row.catalog_product_id, productName: row.product_name, productRetailer: row.product_retailer, productPrice: row.product_price, productCurrency: row.product_currency, styleNote: row.style_note, mood: z.enum(styleMoods).parse(row.mood), advice: readAdvice(row, items), isPublished: row.is_published, shareSlug: row.share_slug, createdAt: row.created_at, items: items.map((item) => ({ id: item.id, label: item.label, searchTerm: item.search_term, destinationUrl: item.destination_url, source: item.source === "submitted" ? "submitted" : "suggested" })), likeCount, commentCount };
 }
 
 export const getPublicProfile = createServerFn({ method: "GET" }).inputValidator((input) => z.object({ handle: z.string().min(3).max(24) }).parse(input)).handler(async ({ data }) => {

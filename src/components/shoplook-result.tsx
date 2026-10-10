@@ -56,8 +56,8 @@ export function ShopLookResult(props: Props) {
         <p className="shrink-0 text-sm font-semibold leading-5 text-primary">₹{product.price.toLocaleString("en-IN")}</p>
       </div>
       <div className={`mt-2 grid gap-2 ${showCompare ? "grid-cols-3" : "grid-cols-2"}`}>
-        {showCompare && <Button variant="outline" className="h-9 px-2 text-xs" aria-label={`Compare my looks (${props.comparisonCount})`} disabled={props.comparisonCount === 0} onClick={props.onCompare}>Compare{props.comparisonCount > 0 ? ` (${props.comparisonCount})` : ""} <ArrowRight /></Button>}
         <Button variant="outline" className={`h-9 px-2 text-xs ${selected ? "border-primary bg-primary-soft text-primary" : ""}`} disabled={!props.canSave || saving} aria-label={selected ? `Remove ${product.name} from comparison` : `Save ${product.name} to my looks`} aria-pressed={selected} onClick={props.onSave}>{saving ? <LoaderCircle className="animate-spin" /> : <Heart className={selected ? "fill-primary" : ""} />}{saving ? "Saving" : selected ? "Saved" : "Save"}</Button>
+        {showCompare && <Button variant="outline" className="h-9 px-2 text-xs" aria-label={`Compare my looks (${props.comparisonCount})`} disabled={props.comparisonCount === 0} onClick={props.onCompare}>Compare{props.comparisonCount > 0 ? ` (${props.comparisonCount})` : ""} <ArrowRight /></Button>}
         <Button className="h-9 px-2 text-xs" onClick={props.onBuy}><ShoppingBag /> {product.productUrl ? "Buy" : "Search"}</Button>
       </div>
     </div>

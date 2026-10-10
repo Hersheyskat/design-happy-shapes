@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Turn Stylist's take into an interactive, account-persisted ongoing chat; verify replies, follow-up context, privacy, and reload restoration.
+- [x] Add one Share action for all comparison looks; retain individual Buy actions and sign-in before retailer navigation.
+
 - [x] Replace the result carousel with a vertically scrollable shopping grid and return to the ShopLook photo when a product is tapped.
 
 - [x] Shrink the Try another look heading and spacing and visually remove the Search clothing label while preserving search accessibility.

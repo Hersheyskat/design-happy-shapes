@@ -15,6 +15,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as ApiGenerateLookRouteImport } from './routes/api/generate-look'
+import { Route as ApiStylistChatRouteImport } from './routes/api/stylist-chat'
 import { Route as ApiSuggestCatalogRouteImport } from './routes/api/suggest-catalog'
 import { Route as LookLookIdRouteImport } from './routes/look.$lookId'
 import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
@@ -50,6 +51,11 @@ const ApiGenerateLookRoute = ApiGenerateLookRouteImport.update({
   path: '/api/generate-look',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStylistChatRoute = ApiStylistChatRouteImport.update({
+  id: '/api/stylist-chat',
+  path: '/api/stylist-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSuggestCatalogRoute = ApiSuggestCatalogRouteImport.update({
   id: '/api/suggest-catalog',
   path: '/api/suggest-catalog',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
+  '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
+  '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/progress': typeof ProgressRoute
   '/saved': typeof SavedRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
+  '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/saved'
     | '/api/generate-look'
+    | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/look/$lookId'
     | '/profile/$handle'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/saved'
     | '/api/generate-look'
+    | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/look/$lookId'
     | '/profile/$handle'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/saved'
     | '/api/generate-look'
+    | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/look/$lookId'
     | '/profile/$handle'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   ProgressRoute: typeof ProgressRoute
   SavedRoute: typeof SavedRoute
   ApiGenerateLookRoute: typeof ApiGenerateLookRoute
+  ApiStylistChatRoute: typeof ApiStylistChatRoute
   ApiSuggestCatalogRoute: typeof ApiSuggestCatalogRoute
   LookLookIdRoute: typeof LookLookIdRoute
   SavedLookLookIdRoute: typeof SavedLookLookIdRoute
@@ -201,6 +214,13 @@ declare module '@tanstack/react-router' {
       path: '/api/generate-look'
       fullPath: '/api/generate-look'
       preLoaderRoute: typeof ApiGenerateLookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stylist-chat': {
+      id: '/api/stylist-chat'
+      path: '/api/stylist-chat'
+      fullPath: '/api/stylist-chat'
+      preLoaderRoute: typeof ApiStylistChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/suggest-catalog': {
@@ -252,6 +272,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProgressRoute: ProgressRoute,
   SavedRoute: SavedRoute,
   ApiGenerateLookRoute: ApiGenerateLookRoute,
+  ApiStylistChatRoute: ApiStylistChatRoute,
   ApiSuggestCatalogRoute: ApiSuggestCatalogRoute,
   LookLookIdRoute: LookLookIdRoute,
   SavedLookLookIdRoute: SavedLookLookIdRoute,

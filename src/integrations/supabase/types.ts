@@ -432,6 +432,27 @@ export type Database = {
           },
         ]
       }
+      stylist_conversations: {
+        Row: {
+          messages: Json
+          revision: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          messages?: Json
+          revision?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          messages?: Json
+          revision?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_blocks: {
         Row: {
           blocked_id: string

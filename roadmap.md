@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Generate complete head-to-toe stylist-created outfits instead of garment-only selfie swaps; live generation from the blue-shirt selfie returned a coordinated shirt, jeans, belt and boots with both feet visible and rendered in ShopLook.
 - [x] Capture originating ShopLook photos and product names in product-chat messages and restore them in Chat; verified private thumbnails after reload and removed verification exchanges.
 
 - [x] Replace the bottom Shop tab with a Chat page sharing the existing private stylist conversation; verify history continuation and new questions.

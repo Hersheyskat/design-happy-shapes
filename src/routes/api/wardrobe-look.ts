@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import type { Database } from "@/integrations/supabase/types";
 import { editImage } from "@/lib/wardrobe-image-gateway.server";
 
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/api/wardrobe-look")({ server: { handlers:
   const rows = await client.from("wardrobe_items").select("id,name,image_path").eq("user_id", userId).in("id", outfit.ids);
   if (rows.error || rows.data.length !== new Set(outfit.ids).size) return Response.json({ message: "A wardrobe piece is no longer available." }, { status: 400 });
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const claim = await supabaseAdmin.rpc("claim_ai_generation_cooldown", { _client_hash: `wardrobe:${userId}` });
+  const claim = await supabaseAdmin.rpc("claim_ai_generation_cooldown", { _client_hash: createHash("sha256").update(`wardrobe:${userId}`).digest("hex") });
   if (claim.error) return Response.json({ message: "Look creation is temporarily unavailable." }, { status: 503 });
   if (!claim.data) return Response.json({ message: "Please wait a moment before creating another look." }, { status: 429 });
   const images = new FormData();

@@ -31,7 +31,10 @@ export async function streamImage(
   };
   const res = await send(true);
   if (!res.ok || !res.body) {
-    throw new Error(`Image generation failed: ${res.status} ${await res.text().catch(() => "")}`);
+    const text = await res.text().catch(() => "");
+    let message = text;
+    try { const body = JSON.parse(text); message = body.message ?? body.error?.message ?? text; } catch { /* Non-JSON errors remain readable. */ }
+    throw new Error(message || `Image generation is unavailable (${res.status}).`);
   }
 
   let sawCompleted = false;

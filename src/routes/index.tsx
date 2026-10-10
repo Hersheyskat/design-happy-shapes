@@ -345,6 +345,8 @@ function ShopLook() {
     canvas.height = 900;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Could not prepare your comparison.");
+    context.fillStyle = getComputedStyle(document.body).backgroundColor;
+    context.fillRect(0, 0, canvas.width, canvas.height);
     images.forEach((image, index) => {
       const scale = Math.min(600 / image.naturalWidth, 900 / image.naturalHeight);
       const width = image.naturalWidth * scale;

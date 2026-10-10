@@ -13,7 +13,7 @@ import { listCatalogProducts, saveMyLook } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 import { analyseGeneratedLook } from "@/lib/stylist-comment.functions";
 type Product = CatalogProductDto;
-type PendingAction = { type: "favorite" | "share" | "buy"; productId: string };
+type PendingAction = { type: "favorite" | "share" | "shareComparison" | "buy"; productId: string };
 
 export const Route = createFileRoute("/")({
   validateSearch: (search) => z.object({ product: z.string().optional(), mood: z.string().optional() }).catch({}).parse(search),
@@ -92,6 +92,7 @@ function ShopLook() {
   const [activeId, setActiveId] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [shareId, setShareId] = useState<string | null>(null);
+  const [sharingComparison, setSharingComparison] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
@@ -228,7 +229,16 @@ function ShopLook() {
   async function openShare(product: Product) {
     if (!await requireSignIn({ type: "share", productId: product.id })) return;
     setMessage("");
+    setSharingComparison(false);
     setShareId(product.id);
+  }
+
+  async function openComparisonShare() {
+    const first = comparison[0];
+    if (!first || !await requireSignIn({ type: "shareComparison", productId: first.id })) return;
+    setMessage("");
+    setSharingComparison(true);
+    setShareId(first.id);
   }
 
   async function openShop(product: Product) {
@@ -320,16 +330,41 @@ function ShopLook() {
     } finally { setGenerating(null); }
   }
 
+  async function shareImageFile(product: Product) {
+    if (!sharingComparison) {
+      return new File([await (await fetch(generated[product.id] ?? "")).blob()], `shoplook-${product.id}.png`, { type: "image/png" });
+    }
+    const images = await Promise.all(comparison.map(async (item) => {
+      const image = new Image();
+      image.src = generated[item.id] ?? "";
+      await image.decode();
+      return image;
+    }));
+    const canvas = document.createElement("canvas");
+    canvas.width = images.length * 600;
+    canvas.height = 900;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not prepare your comparison.");
+    images.forEach((image, index) => {
+      const scale = Math.min(600 / image.naturalWidth, 900 / image.naturalHeight);
+      const width = image.naturalWidth * scale;
+      const height = image.naturalHeight * scale;
+      context.drawImage(image, index * 600 + (600 - width) / 2, (900 - height) / 2, width, height);
+    });
+    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not prepare your comparison.")), "image/png"));
+    return new File([blob], "my-shoplook-comparison.png", { type: "image/png" });
+  }
+
   async function shareToInstagram(product: Product) {
     try {
       setMessage("");
       const generatedImage = generated[product.id];
       if (!generatedImage) { setMessage("Generate this look before sharing it."); return; }
-      const image = new File([await (await fetch(generatedImage)).blob()], `shoplook-${product.id}.png`, { type: "image/png" });
+      const image = await shareImageFile(product);
       if (navigator.canShare?.({ files: [image] })) {
         await navigator.share({
           files: [image],
-          title: `My ShopLook — ${product.name}`,
+          title: sharingComparison ? "Compare my ShopLooks" : `My ShopLook — ${product.name}`,
           text: "My ShopLook",
         });
         setShareId(null);
@@ -347,10 +382,28 @@ function ShopLook() {
     }
   }
 
-  function shareToWhatsApp(product: Product) {
+  async function shareToWhatsApp(product: Product) {
     const generatedImage = generated[product.id];
     if (!generatedImage) { setMessage("Generate this look before sharing it."); return; }
-    const text = `Check out my ShopLook: ${window.location.href}`;
+    const text = `${sharingComparison ? "Help me choose from my ShopLooks" : "Check out my ShopLook"}: ${window.location.href}`;
+    if (sharingComparison) {
+      try {
+        const image = await shareImageFile(product);
+        if (navigator.canShare?.({ files: [image] })) {
+          await navigator.share({ files: [image], title: "Compare my ShopLooks", text });
+          setShareId(null);
+          return;
+        }
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(image);
+        link.href = url; link.download = image.name; link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      } catch (reason) {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+        setMessage("Could not prepare your looks. Please try again.");
+        return;
+      }
+    }
     setShareId(null);
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   }
@@ -363,7 +416,8 @@ function ShopLook() {
     setPendingAction(null);
     if (action.type === "favorite") void favoriteLook(product);
     if (action.type === "share") setShareId(product.id);
-    if (action.type === "buy") window.open(shopUrl(product), "_blank", "noopener,noreferrer");
+    if (action.type === "shareComparison") { setSharingComparison(true); setShareId(product.id); }
+    if (action.type === "buy") void openShop(product);
   }
 
   async function copyLink() {

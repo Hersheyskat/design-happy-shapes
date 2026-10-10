@@ -67,7 +67,10 @@ export async function handleStylistChat(request: Request) {
   )
     return fail("This image could not be attached.", 400);
   const userId = auth.user.id;
-  if (input.look?.imagePath && (!input.look.imagePath.startsWith(`${userId}/stylist/`) || input.look.imagePath.includes("..")))
+  if (
+    input.look?.imagePath &&
+    (!input.look.imagePath.startsWith(`${userId}/stylist/`) || input.look.imagePath.includes(".."))
+  )
     return fail("This ShopLook does not belong to your chat.", 403);
   const { error: initError } = await client
     .from("stylist_conversations")
@@ -88,7 +91,13 @@ export async function handleStylistChat(request: Request) {
     role: "user",
     parts: [{ type: "text", text }],
     ...(input.look
-      ? { metadata: { productName: input.look.productName, comment: input.look.comment, ...(input.look.imagePath ? { imagePath: input.look.imagePath } : {}) } }
+      ? {
+          metadata: {
+            productName: input.look.productName,
+            comment: input.look.comment,
+            ...(input.look.imagePath ? { imagePath: input.look.imagePath } : {}),
+          },
+        }
       : {}),
   };
   const messages = [...stored, userMessage];

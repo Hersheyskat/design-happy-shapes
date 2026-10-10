@@ -197,8 +197,11 @@ function StylistConversation({
           if (!data.user) throw new Error("Sign in again to attach your ShopLook.");
           const photo = await (await fetch(imageUrl)).blob();
           const path = `${data.user.id}/stylist/${crypto.randomUUID()}/look`;
-          const { error: uploadError } = await supabase.storage.from("shoplook-media").upload(path, photo, { contentType: photo.type || "image/png" });
-          if (uploadError) throw new Error("Your ShopLook could not be attached. Please try again.");
+          const { error: uploadError } = await supabase.storage
+            .from("shoplook-media")
+            .upload(path, photo, { contentType: photo.type || "image/png" });
+          if (uploadError)
+            throw new Error("Your ShopLook could not be attached. Please try again.");
           originRef.current = { url: imageUrl, path };
           imagePath = path;
         }
@@ -219,11 +222,21 @@ function StylistConversation({
       setQuestion("");
       setPreparing(false);
       await sendMessage(
-        { text: text.trim(), ...(productName ? { metadata: { productName, comment, imagePath } } : {}) },
+        {
+          text: text.trim(),
+          ...(productName ? { metadata: { productName, comment, imagePath } } : {}),
+        },
         {
           body:
             productName || comment || image
-              ? { look: { productName, comment, ...(imagePath ? { imagePath } : {}), ...(image ? { image } : {}) } }
+              ? {
+                  look: {
+                    productName,
+                    comment,
+                    ...(imagePath ? { imagePath } : {}),
+                    ...(image ? { image } : {}),
+                  },
+                }
               : {},
         },
       );
@@ -327,15 +340,26 @@ function OriginatingLook({ metadata }: { metadata: unknown }) {
     setUrl("");
     if (!origin?.imagePath) return;
     let active = true;
-    void supabase.storage.from("shoplook-media").createSignedUrl(origin.imagePath, 3600).then(({ data }) => {
-      if (active && data) setUrl(data.signedUrl);
-    });
-    return () => { active = false; };
+    void supabase.storage
+      .from("shoplook-media")
+      .createSignedUrl(origin.imagePath, 3600)
+      .then(({ data }) => {
+        if (active && data) setUrl(data.signedUrl);
+      });
+    return () => {
+      active = false;
+    };
   }, [origin?.imagePath]);
   if (!origin?.productName) return null;
   return (
     <div className="mb-2 flex max-w-full items-center gap-3 border-l-2 border-primary pl-3">
-      {url && <img src={url} alt={`Originating ShopLook: ${origin.productName}`} className="h-24 w-16 shrink-0 rounded object-contain bg-muted" />}
+      {url && (
+        <img
+          src={url}
+          alt={`Originating ShopLook: ${origin.productName}`}
+          className="h-24 w-16 shrink-0 rounded object-contain bg-muted"
+        />
+      )}
       <div className="min-w-0">
         <p className="text-xs font-semibold text-primary">From this ShopLook</p>
         <p className="break-words text-xs text-muted-foreground">{origin.productName}</p>

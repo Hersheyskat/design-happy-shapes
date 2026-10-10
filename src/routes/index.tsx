@@ -107,7 +107,6 @@ function ShopLook() {
   const [activeId, setActiveId] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [shareId, setShareId] = useState<string | null>(null);
-  const [sharePreparing, setSharePreparing] = useState(false);
   const [sharingComparison, setSharingComparison] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -270,7 +269,6 @@ function ShopLook() {
     if (!await requireSignIn({ type: "share", productId: product.id })) return;
     setMessage("");
     setSharingComparison(false);
-    setSharePreparing(true);
     try {
       const saved = await ensureSharedLook(product);
       if (!saved) return;
@@ -278,8 +276,6 @@ function ShopLook() {
       track("share_click", product, "button");
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "This look could not get a share link.");
-    } finally {
-      setSharePreparing(false);
     }
   }
 

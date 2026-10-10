@@ -25,3 +25,4 @@
 - Keep result product browsing in the presentation component and reuse the existing selection callback for try-on; scrolling to the image must not change generation or saving behavior.
 - Reuse the same stylist chat surface in the isolated result dialog and standalone /chat page, backed by one owner-RLS conversation per account and an authenticated streaming server route; this preserves generation and engagement behavior while restoring the same private history across entry points and devices.
 - Load authoritative stylist history server-side and store completed UI messages with revision checks; this prevents cross-window overwrites and keeps follow-up context intact.
+- Attach originating look snapshots as owner-scoped private storage paths in user-message metadata, separate from opt-in AI image attachments; this preserves visual provenance without automatically sending images to the model or saving archive looks.

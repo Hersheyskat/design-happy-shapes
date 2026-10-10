@@ -14,6 +14,7 @@ type Props = {
   completed: boolean;
   generating: string | null;
   saving: boolean;
+  sharing?: boolean;
   selected: boolean;
   canSave: boolean;
   comment?: string | undefined;
@@ -51,6 +52,7 @@ export function ShopLookResult(props: Props) {
     return terms.every((term) => text.includes(term));
   });
   const { product, completed, generating, selected, saving } = props;
+  const sharing = Boolean(props.sharing);
   const showCompare = saving || props.comparisonCount > 0;
   return <section className="bg-card pb-8 text-foreground">
     <div ref={imageRef} className="relative scroll-mt-16">
@@ -58,7 +60,7 @@ export function ShopLookResult(props: Props) {
       <Button variant="ghost" className="absolute inset-0 h-full w-full rounded-none p-0 hover:bg-transparent" aria-label="View your look full-screen" onClick={() => setImageOpen(true)}>
         <span className="absolute bottom-3 right-3 grid size-9 place-items-center rounded-full bg-overlay text-overlay-foreground"><Expand /></span>
       </Button>
-      <Button variant="ghost" size="icon" className={`absolute right-3 z-10 size-9 rounded-full bg-overlay text-overlay-foreground hover:bg-overlay hover:text-overlay-foreground ${generating ? "top-14" : "top-3"}`} aria-label="Share your look" title="Share your look" disabled={!completed} onClick={props.onShare}><Share2 className="size-4" /></Button>
+      <Button variant="ghost" size="icon" className={`absolute right-3 z-10 size-9 rounded-full bg-overlay text-overlay-foreground hover:bg-overlay hover:text-overlay-foreground ${generating ? "top-14" : "top-3"}`} aria-label="Share your look" title="Share your look" disabled={!completed || sharing} onClick={props.onShare}>{sharing ? <LoaderCircle className="size-4 animate-spin" /> : <Share2 className="size-4" />}</Button>
       {generating && <div role="status" className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-5 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating Your ShopLook…</div>}
       {stylistKey && <>
         <div id="shoplook-stylist-take" aria-live="polite" className={`absolute inset-x-3 bottom-14 z-10 origin-bottom-right rounded-md border border-border bg-card/95 p-3 text-card-foreground shadow-float backdrop-blur-sm motion-safe:transition-all motion-safe:duration-300 ${stylistOpen || stylistPinned ? "visible translate-y-0 opacity-100" : "invisible pointer-events-none translate-y-2 opacity-0"}`}>
@@ -76,7 +78,7 @@ export function ShopLookResult(props: Props) {
         <p className="shrink-0 text-sm font-semibold leading-5 text-primary">₹{product.price.toLocaleString("en-IN")}</p>
       </div>
       <div className={`mt-2 grid gap-2 ${showCompare ? "grid-cols-3" : "grid-cols-2"}`}>
-        <Button variant="outline" className={`h-9 px-2 text-xs ${selected ? "border-primary bg-primary-soft text-primary" : ""}`} disabled={!props.canSave || saving} aria-label={selected ? `Remove ${product.name} from comparison` : `Save ${product.name} to my looks`} aria-pressed={selected} onClick={props.onSave}>{saving ? <LoaderCircle className="animate-spin" /> : <Heart className={selected ? "fill-primary" : ""} />}{saving ? "Saving" : selected ? "Saved" : "Save"}</Button>
+        <Button variant="outline" className={`h-9 px-2 text-xs ${selected ? "border-primary bg-primary-soft text-primary" : ""}`} disabled={(!props.canSave && !selected) || saving} aria-label={selected ? `Remove ${product.name} from comparison` : `Save ${product.name} to my looks`} aria-pressed={selected} onClick={props.onSave}>{saving ? <LoaderCircle className="animate-spin" /> : <Heart className={selected ? "fill-primary" : ""} />}{saving ? "Saving" : selected ? "Saved" : "Save"}</Button>
         {showCompare && <Button variant="outline" className="h-9 px-2 text-xs" aria-label={`Compare my looks (${props.comparisonCount})`} disabled={props.comparisonCount === 0} onClick={props.onCompare}>Compare{props.comparisonCount > 0 ? ` (${props.comparisonCount})` : ""} <ArrowRight /></Button>}
         <Button className="h-9 px-2 text-xs" onClick={props.onBuy}><ShoppingBag /> {product.productUrl ? "Buy" : "Search"}</Button>
       </div>

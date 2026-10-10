@@ -107,6 +107,7 @@ function ShopLook() {
   const [activeId, setActiveId] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [shareId, setShareId] = useState<string | null>(null);
+  const [sharePreparing, setSharePreparing] = useState(false);
   const [sharingComparison, setSharingComparison] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -262,13 +263,14 @@ function ShopLook() {
       setSavedLooks((current) => ({ ...current, [product.id]: next }));
       return next;
     }
-    return await saveLook(product);
+    return await saveLook(product, { indicateSaving: false });
   }
 
   async function openShare(product: Product) {
     if (!await requireSignIn({ type: "share", productId: product.id })) return;
     setMessage("");
     setSharingComparison(false);
+    setSharePreparing(true);
     try {
       const saved = await ensureSharedLook(product);
       if (!saved) return;
@@ -276,6 +278,8 @@ function ShopLook() {
       track("share_click", product, "button");
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "This look could not get a share link.");
+    } finally {
+      setSharePreparing(false);
     }
   }
 
@@ -298,12 +302,16 @@ function ShopLook() {
     window.open(shopUrl(product), "_blank", "noopener,noreferrer");
   }
 
-  async function saveLook(product: Product): Promise<{ id: string; shareSlug: string } | null> {
+  async function saveLook(product: Product, options?: { indicateSaving?: boolean }): Promise<{ id: string; shareSlug: string } | null> {
+    const indicateSaving = options?.indicateSaving ?? true;
     const generatedImage = generated[product.id];
     if (!generatedImage || savingIdsRef.current.has(product.id)) return null;
     if (savedLooks[product.id]?.shareSlug) return savedLooks[product.id]!;
     savingIdsRef.current.add(product.id);
-    setSavingIds((current) => [...current, product.id]); setMessage("");
+    if (indicateSaving) {
+      setSavingIds((current) => [...current, product.id]);
+      setMessage("");
+    }
     const uploadedPaths: string[] = [];
     try {
       const stylistComment = stylistComments[product.id] ?? await stylistRequestsRef.current.get(product.id) ?? "A stylist note was not available for this look.";
@@ -339,7 +347,7 @@ function ShopLook() {
       } });
       const next = { id: saved.id, shareSlug: saved.shareSlug };
       setSavedLooks((current) => ({ ...current, [product.id]: next }));
-      setMessage("Saved privately to your Saved looks.");
+      if (indicateSaving) setMessage("Saved privately to your Saved looks.");
       return next;
     } catch (reason) {
       if (uploadedPaths.length) await supabase.storage.from("shoplook-media").remove(uploadedPaths);
@@ -347,7 +355,7 @@ function ShopLook() {
       return null;
     } finally {
       savingIdsRef.current.delete(product.id);
-      setSavingIds((current) => current.filter((id) => id !== product.id));
+      if (indicateSaving) setSavingIds((current) => current.filter((id) => id !== product.id));
     }
   }
 
@@ -546,7 +554,7 @@ function ShopLook() {
     }
   }
 
-  function reset() { setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setStylistComments({}); setStylistErrors({}); setStylistLoading(null); stylistRequestsRef.current.clear(); setGenerationError(""); setFavorites([]); setSavedLooks({}); setActiveId(""); setShareId(null); setShopId(null); setMessage(""); }
+  function reset() { setAudience(null); setView("start"); setPhoto(null); setPhotoFile(null); setGenerated({}); setStylistComments({}); setStylistErrors({}); setStylistLoading(null); stylistRequestsRef.current.clear(); setGenerationError(""); setFavorites([]); setSavedLooks({}); setActiveId(""); setShareId(null); setSharePreparing(false); setShopId(null); setMessage(""); }
 
   return <ShopLookShell>
     <header className={`flex h-16 items-center justify-between border-b border-border px-5 ${view === "try" ? "bg-card" : ""}`}>
@@ -583,8 +591,9 @@ function ShopLook() {
       completed={Boolean(generated[active.id])}
       generating={generating}
       saving={savingIds.includes(active.id)}
+      sharing={sharePreparing}
       selected={favorites.includes(active.id)}
-      canSave={Boolean(generated[active.id] && stylistComments[active.id])}
+      canSave={Boolean(generated[active.id]) && generating !== active.id}
       comment={stylistComments[active.id]}
       commentLoading={stylistLoading === active.id}
       commentError={stylistErrors[active.id]}

@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Replace the result carousel with a vertically scrollable shopping grid and return to the ShopLook photo when a product is tapped.
+
 - [x] Shrink the Try another look heading and spacing and visually remove the Search clothing label while preserving search accessibility.
 
 - [x] Add a clearly labelled clothing search to the result carousel, filtering by clothing type, product name, or retailer without changing saved looks or generation.

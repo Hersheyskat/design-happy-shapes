@@ -21,3 +21,4 @@
 - Share Instagram looks as private image files through the device share sheet with a local download fallback; open WhatsApp directly with a ShopLook text and page link.
 
 - Keep the result presentation isolated from generation and engagement logic, with a viewport-aware image hero and full-screen viewer; preserve comparison image proportions so result sizing never changes shortlist framing.
+- Keep result product browsing in the presentation component and reuse the existing selection callback for try-on; scrolling to the image must not change generation or saving behavior.

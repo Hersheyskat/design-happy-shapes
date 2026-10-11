@@ -32,6 +32,7 @@ export type CatalogProductDto = {
   audience: "men" | "women";
   name: string;
   category: string;
+  subcategory: string | null;
   retailer: string;
   price: number;
   currency: string;

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { ShopLookShell } from "@/components/shoplook-shell";
 import { listCatalogProducts } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
@@ -17,7 +18,13 @@ function ShopPage() {
   const loadCatalog = useServerFn(listCatalogProducts);
   const [products, setProducts] = useState<CatalogProductDto[]>([]);
   const [audience, setAudience] = useState<"women" | "men">("women");
+  const [category, setCategory] = useState("All");
+  const [subcategory, setSubcategory] = useState("All");
+  const [retailer, setRetailer] = useState("All");
   const [query, setQuery] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [draftAudience, setDraftAudience] = useState<"women" | "men">("women");
+  const [draftRetailer, setDraftRetailer] = useState("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -25,20 +32,167 @@ function ShopPage() {
     void loadCatalog().then(setProducts).catch(() => setError("The catalogue is unavailable. Please try again.")).finally(() => setLoading(false));
   }, [loadCatalog]);
 
+  const audienceProducts = products.filter((product) => product.audience === audience);
+  const categories = ["All", ...Array.from(new Set(audienceProducts.map((product) => product.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
+  const categoryProducts = category === "All" ? audienceProducts : audienceProducts.filter((product) => product.category === category);
+  const subcategories = ["All", ...Array.from(new Set(categoryProducts.map((product) => product.subcategory).filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b))];
+  const draftRetailers = ["All", ...Array.from(new Set(products.filter((product) => product.audience === draftAudience).map((product) => product.retailer).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
   const term = query.trim().toLowerCase();
-  const filtered = products.filter((product) => product.audience === audience && (!term || `${product.name} ${product.retailer} ${product.category}`.toLowerCase().includes(term)));
-  const count = products.filter((product) => product.audience === audience).length;
+  const filtered = audienceProducts.filter((product) => {
+    if (category !== "All" && product.category !== category) return false;
+    if (subcategory !== "All" && product.subcategory !== subcategory) return false;
+    if (retailer !== "All" && product.retailer !== retailer) return false;
+    return !term || `${product.name} ${product.retailer} ${product.category} ${product.subcategory ?? ""}`.toLowerCase().includes(term);
+  });
+  const filterCount = (retailer !== "All" ? 1 : 0);
 
   return <ShopLookShell>
-    <header className="border-b border-border px-5 pb-5 pt-7"><p className="text-xs font-semibold uppercase tracking-widest text-primary">ShopLook catalogue</p><h1 className="mt-2 font-display text-4xl">Shop</h1><p className="mt-2 text-sm text-muted-foreground">Choose a piece to place it first in your Look studio.</p></header>
+    <header className="border-b border-border px-5 pb-5 pt-7">
+      <p className="text-xs font-semibold uppercase tracking-widest text-primary">ShopLook catalogue</p>
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <h1 className="font-display text-4xl">Shop</h1>
+        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs font-medium text-muted-foreground" onClick={() => { setDraftAudience(audience); setDraftRetailer(retailer); setFilterOpen(true); }}>
+          <SlidersHorizontal className="size-3.5" />
+          Filter{filterCount > 0 ? ` · ${filterCount}` : ""}
+        </Button>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">Choose a piece to place it first in your Look studio.</p>
+    </header>
     <section className="px-4 pb-10 pt-4">
-      <label className="flex h-11 items-center gap-3 rounded-md border border-input bg-background px-3 focus-within:ring-1 focus-within:ring-ring"><Search className="size-4 text-muted-foreground" /><span className="sr-only">Search products</span><input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="Search products, brands or categories" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" /></label>
-      <div className="mt-4 flex items-center gap-2" role="group" aria-label="Shop catalogue"><Button type="button" aria-pressed={audience === "women"} variant={audience === "women" ? "default" : "outline"} onClick={() => setAudience("women")}>Women</Button><Button type="button" aria-pressed={audience === "men"} variant={audience === "men" ? "default" : "outline"} onClick={() => setAudience("men")}>Men</Button><span className="ml-auto text-xs text-muted-foreground">{count} products</span></div>
+      <label className="flex h-11 items-center gap-3 rounded-md bg-surface px-3 focus-within:ring-1 focus-within:ring-ring">
+        <Search className="size-4 text-muted-foreground" />
+        <span className="sr-only">Search products</span>
+        <input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="Search shirts, brands…" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:appearance-none" />
+        {query ? <button type="button" aria-label="Clear search" className="text-muted-foreground" onClick={() => setQuery("")}><X className="size-4" /></button> : null}
+      </label>
+
+      <div className="mt-5 flex gap-5 overflow-x-auto border-b border-border" role="tablist" aria-label="Catalogue">
+        {(["women", "men"] as const).map((option) => {
+          const active = audience === option;
+          return (
+            <button
+              key={option}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={`shrink-0 border-b-2 pb-2.5 text-sm capitalize transition-colors ${active ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground"}`}
+              onClick={() => { setAudience(option); setCategory("All"); setSubcategory("All"); setRetailer("All"); }}
+            >
+              {option === "women" ? "Women" : "Men"}
+            </button>
+          );
+        })}
+      </div>
+
+      {categories.length > 1 && (
+        <div className="mt-4 flex gap-5 overflow-x-auto border-b border-border" role="tablist" aria-label="Category">
+          {categories.map((option) => {
+            const active = category === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className={`shrink-0 border-b-2 pb-2.5 text-sm transition-colors ${active ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground"}`}
+                onClick={() => { setCategory(option); setSubcategory("All"); }}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {subcategories.length > 1 && (
+        <div className="mt-3 flex gap-5 overflow-x-auto border-b border-border" role="tablist" aria-label="Subcategory">
+          {subcategories.map((option) => {
+            const active = subcategory === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className={`shrink-0 border-b-2 pb-2.5 text-sm transition-colors ${active ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground"}`}
+                onClick={() => setSubcategory(option)}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {loading && <p role="status" className="py-16 text-center text-sm text-muted-foreground">Loading products…</p>}
       {error && <p role="alert" className="py-16 text-center text-sm text-destructive">{error}</p>}
       {!loading && !error && products.length === 0 && <div className="py-20 text-center"><h2 className="font-display text-2xl">Catalogue is empty</h2><p className="mt-2 text-sm text-muted-foreground">Products will appear here after they are added to Supabase.</p></div>}
-      {!loading && !error && filtered.length > 0 && <div className="mt-5 grid grid-cols-2 gap-3">{filtered.map((product) => <Button key={product.id} asChild variant="ghost" className="h-auto min-w-0 flex-col items-stretch justify-start gap-0 overflow-hidden rounded-md border border-border p-0 text-left"><Link to="/" search={{ product: product.id }} aria-label={`Try ${product.name} in Look`}><span className="aspect-[4/5] w-full overflow-hidden bg-surface"><img src={product.image} alt={product.name} loading="lazy" width={768} height={1024} className="size-full object-contain" /></span><span className="block w-full truncate px-3 pt-3 text-sm font-semibold">{product.name}</span><span className="block w-full truncate px-3 pt-1 text-xs text-muted-foreground">{product.retailer}</span><span className="block w-full px-3 pb-3 pt-1 text-sm">₹{product.price.toLocaleString("en-IN")}</span></Link></Button>)}</div>}
-      {!loading && !error && products.length > 0 && filtered.length === 0 && <div className="py-20 text-center"><h2 className="font-display text-2xl">No products found</h2><p className="mt-2 text-sm text-muted-foreground">Try another search or catalogue.</p></div>}
+      {!loading && !error && filtered.length > 0 && (
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          {filtered.map((product) => (
+            <Button key={product.id} asChild variant="ghost" className="h-auto min-w-0 flex-col items-stretch justify-start gap-0 overflow-hidden rounded-md p-0 text-left hover:bg-transparent">
+              <Link to="/" search={{ product: product.id }} aria-label={`Try ${product.name} in Look`}>
+                <span className="aspect-[4/5] w-full overflow-hidden bg-surface"><img src={product.image} alt={product.name} loading="lazy" width={768} height={1024} className="size-full object-contain" /></span>
+                <span className="block w-full truncate pt-3 text-sm font-semibold">{product.name}</span>
+                <span className="block w-full truncate pt-1 text-xs text-muted-foreground">{product.retailer}</span>
+                <span className="block w-full pt-1 text-sm">₹{product.price.toLocaleString("en-IN")}</span>
+              </Link>
+            </Button>
+          ))}
+        </div>
+      )}
+      {!loading && !error && products.length > 0 && filtered.length === 0 && <div className="py-20 text-center"><h2 className="font-display text-2xl">No products found</h2><p className="mt-2 text-sm text-muted-foreground">Try another search or clear filters.</p></div>}
     </section>
+
+    <Drawer open={filterOpen} onOpenChange={setFilterOpen}>
+      <DrawerContent className="mx-auto max-w-[430px]">
+        <DrawerHeader className="text-left">
+          <DrawerTitle>Filter shop</DrawerTitle>
+          <DrawerDescription>Brand and catalogue live here so the grid stays clean.</DrawerDescription>
+        </DrawerHeader>
+        <div className="space-y-6 px-4 pb-2">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Catalogue</p>
+            <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="Catalogue">
+              {(["women", "men"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={draftAudience === option}
+                  className={`h-10 rounded-md border text-sm capitalize transition-colors ${draftAudience === option ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground"}`}
+                  onClick={() => { setDraftAudience(option); setDraftRetailer("All"); }}
+                >
+                  {option === "women" ? "Women" : "Men"}
+                </button>
+              ))}
+            </div>
+          </div>
+          {draftRetailers.length > 1 && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Brand</p>
+              <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Brand">
+                {draftRetailers.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={draftRetailer === option}
+                    className={`h-9 rounded-md border px-3 text-sm transition-colors ${draftRetailer === option ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground"}`}
+                    onClick={() => setDraftRetailer(option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <DrawerFooter className="grid grid-cols-2 gap-2">
+          <Button type="button" variant="outline" onClick={() => { setDraftAudience("women"); setDraftRetailer("All"); }}>Clear</Button>
+          <DrawerClose asChild>
+            <Button type="button" onClick={() => { setAudience(draftAudience); setRetailer(draftRetailer); setCategory("All"); setSubcategory("All"); setFilterOpen(false); }}>Show products</Button>
+          </DrawerClose>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   </ShopLookShell>;
 }

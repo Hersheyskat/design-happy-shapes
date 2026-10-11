@@ -88,6 +88,7 @@ export type Database = {
           availability: string
           batch_id: string
           category: string
+          subcategory: string | null
           created_at: string
           currency: string
           display_order: number
@@ -107,6 +108,7 @@ export type Database = {
           availability?: string
           batch_id: string
           category: string
+          subcategory?: string | null
           created_at?: string
           currency?: string
           display_order: number
@@ -126,6 +128,7 @@ export type Database = {
           availability?: string
           batch_id?: string
           category?: string
+          subcategory?: string | null
           created_at?: string
           currency?: string
           display_order?: number
@@ -138,6 +141,42 @@ export type Database = {
           refreshed_at?: string
           retailer?: string
           source_image_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalog_categories: {
+        Row: {
+          id: string
+          audience: string
+          name: string
+          slug: string
+          parent_id: string | null
+          display_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          audience: string
+          name: string
+          slug: string
+          parent_id?: string | null
+          display_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          audience?: string
+          name?: string
+          slug?: string
+          parent_id?: string | null
+          display_order?: number
+          is_active?: boolean
+          created_at?: string
           updated_at?: string
         }
         Relationships: []

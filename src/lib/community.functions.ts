@@ -27,9 +27,9 @@ function catalogImageUrl(imagePath: string) {
 }
 
 export const listCatalogProducts = createServerFn({ method: "GET" }).handler(async (): Promise<CatalogProductDto[]> => {
-  const result = await publicClient().from("catalog_products").select("id, audience, product_name, category, retailer, price, currency, image_path, product_url, refreshed_at").eq("is_active", true).eq("availability", "available").order("display_order");
+  const result = await publicClient().from("catalog_products").select("id, audience, product_name, category, subcategory, retailer, price, currency, image_path, product_url, refreshed_at").eq("is_active", true).eq("availability", "available").order("display_order");
   if (result.error) throw new Error("The catalogue is temporarily unavailable. Please try again.");
-  return result.data.map((row) => ({ id: row.id, audience: row.audience as "men" | "women", name: row.product_name, category: row.category, retailer: row.retailer, price: row.price, currency: row.currency, image: catalogImageUrl(row.image_path), productUrl: row.product_url, refreshedAt: row.refreshed_at }));
+  return result.data.map((row) => ({ id: row.id, audience: row.audience as "men" | "women", name: row.product_name, category: row.category, subcategory: row.subcategory ?? null, retailer: row.retailer, price: row.price, currency: row.currency, image: catalogImageUrl(row.image_path), productUrl: row.product_url, refreshedAt: row.refreshed_at }));
 });
 
 function publicClient() {

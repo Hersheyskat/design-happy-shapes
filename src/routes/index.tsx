@@ -362,6 +362,7 @@ function ShopLook() {
   function selectProduct(id: string) {
     const product = products.find((item) => item.id === id);
     if (!product || generating) return;
+    setAudience(product.audience);
     setGenerationError("");
     if (generated[id]) setActiveId(id);
     else void generateLook(product);
@@ -585,7 +586,7 @@ function ShopLook() {
 
     {view === "try" && active && <ShopLookResult
       product={active}
-      products={visibleProducts}
+      products={products}
       image={<LookImage person={person} product={active} generated={generated[active.id]} hero />}
       imageUrl={generated[active.id] ?? person}
       completed={Boolean(generated[active.id])}

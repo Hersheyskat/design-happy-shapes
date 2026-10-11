@@ -13,7 +13,7 @@
 - Keep OpenRouter-powered image generation opt-in and server-side; shopper photos only leave the browser after explicit action, while the illustrative demo stays available without a credential.
 - Use the heart as the single explicit action that saves a completed ShopLook to the signed-in shopper's private Saved archive and adds it to comparison; never auto-save or show a separate save control.
 - Gate heart-to-save, share, and retailer actions through Google or passwordless email-code authentication and resume the selected action after sign-in, so profiles consistently own every engagement.
-- Serve the manually refreshed 10-men/10-women catalogue from the database with ShopLook-hosted product images and exact retailer URLs, preserving the last good batch if an import fails.
+- Serve the catalogue from the database with ShopLook-hosted product images and exact retailer URLs; grow it through admin scrape/import or manual entry, preserving the last good batch if an import fails. Manage Men/Women categories and subcategories in admin taxonomy, then browse Try another / Shop with those filters over stored products — never scrape on a shopper request.
 - Suggest a catalogue from visible clothing style only after a separate opt-in action; never infer gender identity or transmit a shopper photo on selection, and always allow manual override.
 - Pass Shop-to-Look product selections by catalogue product ID in the Look page URL, so the handoff survives refresh without storing shopper data.
 - Treat Node's abortIncoming socket-close error as a disconnected request, not an app crash, while preserving reporting for other server errors.

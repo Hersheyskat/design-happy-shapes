@@ -228,8 +228,14 @@ export function ShopLookResult(props: Props) {
             >
               <span className={`relative block aspect-[3/4] w-full shrink-0 overflow-hidden rounded-md bg-surface ${isActive || isCreating ? "ring-1 ring-primary" : ""}`}>
                 <img src={item.image} alt="" loading="lazy" width={300} height={400} className="size-full object-contain transition-transform motion-safe:hover:scale-105" />
+                {!isActive && !isCreating && (
+                  <span className="pointer-events-none absolute bottom-2.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-black/75 px-3 py-1.5 text-[11px] font-medium leading-none text-white">
+                    Try this on
+                    <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
+                  </span>
+                )}
                 {(isActive || isCreating) && (
-                  <span className="absolute right-2 top-2 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground">
+                  <span className="absolute right-2 top-2 z-10 grid size-6 place-items-center rounded-full bg-primary text-primary-foreground">
                     {isCreating ? <LoaderCircle className="size-3 animate-spin" /> : <Check className="size-3" />}
                   </span>
                 )}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -132,7 +132,13 @@ function ShopPage() {
           {filtered.map((product) => (
             <Button key={product.id} asChild variant="ghost" className="h-auto min-w-0 flex-col items-stretch justify-start gap-0 overflow-hidden rounded-md p-0 text-left hover:bg-transparent">
               <Link to="/" search={{ product: product.id }} aria-label={`Try ${product.name} in Look`}>
-                <span className="aspect-[4/5] w-full overflow-hidden bg-surface"><img src={product.image} alt={product.name} loading="lazy" width={768} height={1024} className="size-full object-contain" /></span>
+                <span className="relative aspect-[4/5] w-full overflow-hidden bg-surface">
+                  <img src={product.image} alt={product.name} loading="lazy" width={768} height={1024} className="size-full object-contain" />
+                  <span className="pointer-events-none absolute bottom-2.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-black/75 px-3 py-1.5 text-[11px] font-medium leading-none text-white">
+                    Try this on
+                    <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
+                  </span>
+                </span>
                 <span className="block w-full truncate pt-3 text-sm font-semibold">{product.name}</span>
                 <span className="block w-full truncate pt-1 text-xs text-muted-foreground">{product.retailer}</span>
                 <span className="block w-full pt-1 text-sm">₹{product.price.toLocaleString("en-IN")}</span>

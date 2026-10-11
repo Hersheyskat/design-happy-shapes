@@ -8,6 +8,13 @@
       "when": 1791613023052,
       "tag": "0000_private_stylist_conversation",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791617422360,
+      "tag": "0001_private_wardrobe",
+      "breakpoints": true
     }
   ]
 }

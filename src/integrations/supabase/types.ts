@@ -621,6 +621,33 @@ export type Database = {
           },
         ]
       }
+      wardrobe_items: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          image_path: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          image_path: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          image_path?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

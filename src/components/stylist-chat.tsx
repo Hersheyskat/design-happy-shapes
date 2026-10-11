@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useServerFn } from "@tanstack/react-start";
-import { LoaderCircle, MessageCircle } from "lucide-react";
+import { Images, LoaderCircle, MessageCircle, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,23 +22,47 @@ import {
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { supabase } from "@/integrations/supabase/client";
 import { loadStylistChat } from "@/lib/stylist-chat.functions";
+import type {
+  StylistActiveLook,
+  StylistLookTrayItem,
+  StylistMessageMetadata,
+} from "@/lib/stylist-chat.types";
 
-type Props = {
-  page?: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+export type StylistSessionLook = {
   productName: string;
   comment: string;
   imageUrl: string;
 };
 
+type Props = {
+  page?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  sessionLook?: StylistSessionLook | null;
+};
+
+function lookKey(
+  look: Pick<StylistLookTrayItem, "kind" | "savedLookId" | "sessionImagePath" | "imagePath">,
+) {
+  if (look.kind === "saved") return `saved:${look.savedLookId ?? look.imagePath}`;
+  return `session:${look.sessionImagePath ?? look.imagePath}`;
+}
+
 export function StylistChat(props: Props) {
   const load = useServerFn(loadStylistChat);
   const [account, setAccount] = useState<string | null>(null);
   const [initialMessages, setInitialMessages] = useState<UIMessage[] | null>(null);
+  const [lookTray, setLookTray] = useState<StylistLookTrayItem[]>([]);
+  const [activeLook, setActiveLook] = useState<StylistActiveLook | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const sessionPathRef = useRef<{ url: string; path: string } | null>(null);
+
+  const sessionImageUrl = props.sessionLook?.imageUrl ?? "";
+  const sessionProductName = props.sessionLook?.productName ?? "";
+  const sessionComment = props.sessionLook?.comment ?? "";
+
   useEffect(() => {
     if (!props.open) return;
     let cancelled = false;
@@ -54,7 +78,53 @@ export function StylistChat(props: Props) {
       setAccount(data.user.id);
       try {
         const history = await load();
-        if (!cancelled) setInitialMessages(JSON.parse(history.messages) as UIMessage[]);
+        if (cancelled) return;
+        const messages = JSON.parse(history.messages) as UIMessage[];
+        const tray = JSON.parse(history.lookTray) as StylistLookTrayItem[];
+        const active = JSON.parse(history.activeLook) as StylistActiveLook | { kind: null };
+        let nextTray = tray;
+        let nextActive: StylistActiveLook | null =
+          active.kind === "saved" || active.kind === "session" ? active : null;
+
+        if (sessionImageUrl && sessionProductName) {
+          let sessionPath =
+            sessionPathRef.current?.url === sessionImageUrl ? sessionPathRef.current.path : null;
+          if (!sessionPath) {
+            const photo = await (await fetch(sessionImageUrl)).blob();
+            const path = `${data.user.id}/stylist/${crypto.randomUUID()}/look`;
+            const { error: uploadError } = await supabase.storage
+              .from("shoplook-media")
+              .upload(path, photo, { contentType: photo.type || "image/png" });
+            if (uploadError)
+              throw new Error("Your ShopLook could not be attached. Please try again.");
+            sessionPathRef.current = { url: sessionImageUrl, path };
+            sessionPath = path;
+          }
+          const sessionItem: StylistLookTrayItem = {
+            kind: "session",
+            sessionImagePath: sessionPath,
+            productName: sessionProductName,
+            comment: sessionComment,
+            imageUrl: sessionImageUrl,
+            imagePath: sessionPath,
+          };
+          nextTray = [
+            sessionItem,
+            ...tray.filter((item) => lookKey(item) !== lookKey(sessionItem)),
+          ];
+          nextActive = {
+            kind: "session",
+            sessionImagePath: sessionPath,
+            productName: sessionProductName,
+            comment: sessionComment,
+            imageUrl: sessionImageUrl,
+            imagePath: sessionPath,
+          };
+        }
+
+        setLookTray(nextTray);
+        setActiveLook(nextActive);
+        setInitialMessages(messages);
       } catch {
         if (!cancelled) setError("Your conversation could not load. Please try again.");
       }
@@ -62,7 +132,8 @@ export function StylistChat(props: Props) {
     return () => {
       cancelled = true;
     };
-  }, [props.open, attempt, load]);
+  }, [props.open, sessionImageUrl, sessionProductName, sessionComment, attempt, load]);
+
   const content = (
     <>
       <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-4 pr-12">
@@ -91,7 +162,10 @@ export function StylistChat(props: Props) {
         <StylistConversation
           key={`${account}:${attempt}`}
           initialMessages={initialMessages}
-          {...props}
+          lookTray={lookTray}
+          activeLook={activeLook}
+          onActiveLookChange={setActiveLook}
+          page={Boolean(props.page)}
         />
       ) : (
         <div className="grid flex-1 place-items-center p-6">
@@ -114,6 +188,7 @@ export function StylistChat(props: Props) {
       )}
     </>
   );
+
   return (
     <>
       {props.page ? (
@@ -144,14 +219,21 @@ export function StylistChat(props: Props) {
 
 function StylistConversation({
   initialMessages,
-  productName,
-  comment,
-  imageUrl,
-}: Props & { initialMessages: UIMessage[] }) {
+  lookTray,
+  activeLook,
+  onActiveLookChange,
+  page,
+}: {
+  initialMessages: UIMessage[];
+  lookTray: StylistLookTrayItem[];
+  activeLook: StylistActiveLook | null;
+  onActiveLookChange: (look: StylistActiveLook | null) => void;
+  page: boolean;
+}) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const originRef = useRef<{ url: string; path: string } | null>(null);
   const [question, setQuestion] = useState("");
   const [includeImage, setIncludeImage] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [requestError, setRequestError] = useState("");
   const transport = useMemo(
@@ -183,32 +265,15 @@ function StylistConversation({
   useEffect(() => {
     if (!busy) inputRef.current?.focus();
   }, [busy]);
+
   async function submit(text: string) {
     if (!text.trim() || busy) return;
     setRequestError("");
     setPreparing(true);
     try {
-      let imagePath: string | undefined;
-      if (imageUrl && productName) {
-        if (originRef.current?.url === imageUrl) {
-          imagePath = originRef.current.path;
-        } else {
-          const { data } = await supabase.auth.getUser();
-          if (!data.user) throw new Error("Sign in again to attach your ShopLook.");
-          const photo = await (await fetch(imageUrl)).blob();
-          const path = `${data.user.id}/stylist/${crypto.randomUUID()}/look`;
-          const { error: uploadError } = await supabase.storage
-            .from("shoplook-media")
-            .upload(path, photo, { contentType: photo.type || "image/png" });
-          if (uploadError)
-            throw new Error("Your ShopLook could not be attached. Please try again.");
-          originRef.current = { url: imageUrl, path };
-          imagePath = path;
-        }
-      }
       let image: string | undefined;
-      if (includeImage) {
-        const blob = await (await fetch(imageUrl)).blob();
+      if (includeImage && activeLook?.imageUrl) {
+        const blob = await (await fetch(activeLook.imageUrl)).blob();
         image = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () =>
@@ -219,26 +284,39 @@ function StylistConversation({
           reader.readAsDataURL(blob);
         });
       }
+      const lookBody =
+        activeLook?.kind === "saved" && activeLook.savedLookId
+          ? {
+              savedLookId: activeLook.savedLookId,
+              ...(image ? { image } : {}),
+            }
+          : activeLook?.kind === "session"
+            ? {
+                sessionImagePath: activeLook.sessionImagePath,
+                productName: activeLook.productName,
+                comment: activeLook.comment,
+                ...(image ? { image } : {}),
+              }
+            : image
+              ? { image }
+              : undefined;
       setQuestion("");
       setPreparing(false);
       await sendMessage(
         {
           text: text.trim(),
-          ...(productName ? { metadata: { productName, comment, imagePath } } : {}),
+          ...(activeLook?.productName
+            ? {
+                metadata: {
+                  productName: activeLook.productName,
+                  comment: activeLook.comment,
+                  imagePath: activeLook.imagePath,
+                  ...(activeLook.savedLookId ? { savedLookId: activeLook.savedLookId } : {}),
+                } satisfies StylistMessageMetadata,
+              }
+            : {}),
         },
-        {
-          body:
-            productName || comment || image
-              ? {
-                  look: {
-                    productName,
-                    comment,
-                    ...(imagePath ? { imagePath } : {}),
-                    ...(image ? { image } : {}),
-                  },
-                }
-              : {},
-        },
+        { body: lookBody ? { look: lookBody } : {} },
       );
     } catch (reason) {
       setRequestError(
@@ -250,16 +328,47 @@ function StylistConversation({
       inputRef.current?.focus();
     }
   }
+
+  function selectLook(item: StylistLookTrayItem) {
+    onActiveLookChange({
+      kind: item.kind,
+      ...(item.savedLookId ? { savedLookId: item.savedLookId } : {}),
+      ...(item.sessionImagePath ? { sessionImagePath: item.sessionImagePath } : {}),
+      productName: item.productName,
+      comment: item.comment,
+      imageUrl: item.imageUrl,
+      imagePath: item.imagePath,
+    });
+    setPickerOpen(false);
+  }
+
   return (
     <>
+      {activeLook && (
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-border px-4 py-2.5">
+          <img
+            src={activeLook.imageUrl}
+            alt=""
+            className="h-12 w-9 shrink-0 rounded object-cover bg-muted"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium text-muted-foreground">This look</p>
+            <p className="truncate text-sm font-medium leading-5">{activeLook.productName}</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0"
+            aria-label="Clear selected look"
+            onClick={() => onActiveLookChange(null)}
+          >
+            <X className="size-3.5" />
+          </Button>
+        </div>
+      )}
       <Conversation className="min-h-0">
         <ConversationContent className="gap-5">
-          {comment && (
-            <div className="border-l-2 border-primary pl-3">
-              <p className="mb-1 text-xs font-semibold text-primary">Stylist’s take</p>
-              <p className="text-sm leading-5">{comment}</p>
-            </div>
-          )}
           {messages.map((message) => (
             <Message key={message.id} from={message.role}>
               <OriginatingLook metadata={message.metadata} />
@@ -293,7 +402,7 @@ function StylistConversation({
         <ConversationScrollButton />
       </Conversation>
       <div className="shrink-0 border-t border-border p-3">
-        {imageUrl && (
+        {activeLook?.imageUrl && (
           <label className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
             <Checkbox
               checked={includeImage}
@@ -310,14 +419,26 @@ function StylistConversation({
             onChange={(event) => setQuestion(event.target.value)}
             maxLength={2000}
             placeholder={
-              imageUrl
+              activeLook?.productName
                 ? "What shoes would work with this?"
                 : "Ask about outfits, colours or styling…"
             }
             aria-label="Ask your stylist"
             className="min-h-16 text-sm"
           />
-          <PromptInputFooter className="justify-end">
+          <PromptInputFooter className="justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              aria-label="Choose a look"
+              aria-expanded={pickerOpen}
+              disabled={busy}
+              onClick={() => setPickerOpen(true)}
+            >
+              <Images className="size-4" />
+            </Button>
             <PromptInputSubmit
               status={status}
               onStop={() => {
@@ -329,12 +450,78 @@ function StylistConversation({
           </PromptInputFooter>
         </PromptInput>
       </div>
+      {pickerOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Choose a look"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-scrim"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setPickerOpen(false);
+          }}
+        >
+          <div className="flex max-h-[min(68dvh,540px)] w-full max-w-[430px] flex-col rounded-t-lg bg-background shadow-sheet">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold">Choose a look</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                aria-label="Close look picker"
+                onClick={() => setPickerOpen(false)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+            {lookTray.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-muted-foreground">
+                {page
+                  ? "Heart a ShopLook to discuss it here, or ask general styling questions anytime."
+                  : "No looks to attach yet."}
+              </p>
+            ) : (
+              <div className="scrollbar-none grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-y-auto p-3">
+                {lookTray.map((item) => {
+                  const selected = Boolean(activeLook && lookKey(activeLook) === lookKey(item));
+                  return (
+                    <button
+                      key={lookKey(item)}
+                      type="button"
+                      onClick={() => selectLook(item)}
+                      className={`overflow-hidden rounded-md border text-left transition-colors ${
+                        selected
+                          ? "border-primary bg-primary-soft"
+                          : "border-border bg-card hover:border-primary/40"
+                      }`}
+                      aria-pressed={selected}
+                    >
+                      <div
+                        className="w-full overflow-hidden bg-muted"
+                        style={{ aspectRatio: "4 / 3" }}
+                      >
+                        <img
+                          src={item.imageUrl}
+                          alt={item.productName}
+                          className="size-full object-contain"
+                        />
+                      </div>
+                      <span className="line-clamp-2 px-2 py-1.5 text-[11px] leading-4 text-foreground">
+                        {item.productName}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
 function OriginatingLook({ metadata }: { metadata: unknown }) {
-  const origin = metadata as { productName?: string; imagePath?: string } | undefined;
+  const origin = metadata as StylistMessageMetadata | undefined;
   const [url, setUrl] = useState("");
   useEffect(() => {
     setUrl("");

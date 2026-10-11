@@ -26,7 +26,7 @@ export const Route = createFileRoute("/chat")({
 function ChatPage() {
   return (
     <ShopLookShell>
-      <StylistChat page open onOpenChange={() => {}} productName="" comment="" imageUrl="" />
+      <StylistChat page open onOpenChange={() => {}} />
     </ShopLookShell>
   );
 }

@@ -568,25 +568,102 @@ export type Database = {
       }
       stylist_conversations: {
         Row: {
+          active_comment: string | null
+          active_product_name: string | null
+          active_saved_look_id: string | null
+          active_session_image_path: string | null
           messages: Json
           revision: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          active_comment?: string | null
+          active_product_name?: string | null
+          active_saved_look_id?: string | null
+          active_session_image_path?: string | null
           messages?: Json
           revision?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          active_comment?: string | null
+          active_product_name?: string | null
+          active_saved_look_id?: string | null
+          active_session_image_path?: string | null
           messages?: Json
           revision?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stylist_conversations_active_saved_look_id_fkey"
+            columns: ["active_saved_look_id"]
+            isOneToOne: false
+            referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stylist_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
+      stylist_messages: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          parts: Json
+          product_name: string | null
+          role: string
+          saved_look_id: string | null
+          session_image_path: string | null
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id: string
+          parts?: Json
+          product_name?: string | null
+          role: string
+          saved_look_id?: string | null
+          session_image_path?: string | null
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          parts?: Json
+          product_name?: string | null
+          role?: string
+          saved_look_id?: string | null
+          session_image_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stylist_messages_saved_look_id_fkey"
+            columns: ["saved_look_id"]
+            isOneToOne: false
+            referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stylist_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_blocks: {
         Row: {

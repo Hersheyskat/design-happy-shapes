@@ -44,7 +44,7 @@ function TextTabs({
 }) {
   if (options.length <= 1) return null;
   return (
-    <div className="flex gap-5 overflow-x-auto border-b border-border" role="tablist" aria-label={label}>
+    <div className="scrollbar-none flex w-full min-w-0 touch-pan-x gap-5 overflow-x-auto overscroll-x-contain border-b border-border" role="tablist" aria-label={label}>
       {options.map((option) => {
         const active = value === option;
         return (

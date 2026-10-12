@@ -54,12 +54,12 @@ function productBrand(name: string) {
   return brands.find((brand) => withoutRetailerPrefix.toLowerCase().startsWith(brand.toLowerCase())) ?? "Brand not listed";
 }
 
-function PreviewPhoto({ src, alt }: { src: string; alt: string }) {
+function PreviewPhoto({ src, alt, contain = false }: { src: string; alt: string; contain?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   return <div className="relative size-full overflow-hidden bg-surface">
     {!loaded && !failed && <div className="absolute inset-0 grid place-items-center" role="status" aria-label="Loading image"><LoaderCircle className="size-5 animate-spin text-muted-foreground" /></div>}
-    {failed ? <div className="flex size-full items-center justify-center px-3 text-center text-xs text-muted-foreground">Image unavailable</div> : <img src={src} alt={alt} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} className={`size-full object-cover ${loaded ? "" : "invisible"}`} />}
+    {failed ? <div className="flex size-full items-center justify-center px-3 text-center text-xs text-muted-foreground">Image unavailable</div> : <img src={src} alt={alt} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} className={`size-full ${contain ? "object-contain" : "object-cover"} ${loaded ? "" : "invisible"}`} />}
   </div>;
 }
 
@@ -67,8 +67,8 @@ function LookImage({ person, product, generated, comparison = false, hero = fals
   const [generatedFailed, setGeneratedFailed] = useState(false);
   useEffect(() => setGeneratedFailed(false), [generated]);
   const showGenerated = Boolean(generated && !generatedFailed);
-  return <div className={`relative w-full overflow-hidden bg-surface ${hero ? "h-[clamp(260px,48dvh,600px)]" : "aspect-[2/3]"}`}>
-    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className={`size-full ${hero ? "object-contain" : "object-cover"} ${comparison && product.id === "teal" ? "scale-125" : ""}`} /></div> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" />}
+  return <div className={`relative w-full overflow-hidden bg-surface ${hero ? "aspect-[5/4]" : "aspect-[2/3]"}`}>
+    {showGenerated && generated ? <div className="size-full"><img src={generated} alt={`AI visualization of you wearing ${product.name}`} onError={() => setGeneratedFailed(true)} className={`size-full ${hero ? "object-contain" : "object-cover"} ${comparison && product.id === "teal" ? "scale-125" : ""}`} /></div> : <PreviewPhoto key={person} src={person} alt="Your original photo — no outfit has been generated yet" contain={hero} />}
     {!showGenerated && <span className="absolute bottom-3 left-3 rounded bg-overlay px-2.5 py-1 text-[10px] font-semibold text-overlay-foreground">Your original photo</span>}
     {generatedFailed && <span role="alert" className="absolute right-3 top-3 rounded bg-overlay px-2 py-1 text-xs text-overlay-foreground">AI image unavailable · showing your photo</span>}
   </div>;

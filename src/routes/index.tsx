@@ -570,7 +570,7 @@ function ShopLook() {
       <p className="mt-3 text-sm leading-6 text-muted-foreground">Fashion shopping made personal and fun. Try two looks free, then sign in to keep creating.</p>
       <div className="mt-6 overflow-hidden rounded-md bg-surface">
         <Button type="button" variant="ghost" className="relative aspect-[5/4] h-auto w-full rounded-none p-0" onClick={() => setPhotoChoiceOpen(true)} aria-label={photo ? "Change your photo" : "Add your photo"}>
-          {photo ? <img src={photo} alt="Your photo preview" className="size-full object-cover" /> : <div className="flex size-full flex-col items-center justify-center gap-3 bg-surface"><span className="grid size-14 place-items-center rounded-full bg-background text-primary"><ImagePlus className="size-6" /></span><span className="font-display text-2xl">Add your photo</span><span className="text-xs text-muted-foreground">Choose a clear picture of yourself</span></div>}
+          {photo ? <img src={photo} alt="Your photo preview" className="size-full object-contain" /> : <div className="flex size-full flex-col items-center justify-center gap-3 bg-surface"><span className="grid size-14 place-items-center rounded-full bg-background text-primary"><ImagePlus className="size-6" /></span><span className="font-display text-2xl">Add your photo</span><span className="text-xs text-muted-foreground">Choose a clear picture of yourself</span></div>}
           {photo && <span className="absolute bottom-3 right-3 rounded bg-overlay px-3 py-1.5 text-xs text-overlay-foreground"><Check className="mr-1 inline size-3" /> Photo ready · tap to change</span>}
         </Button>
       </div>

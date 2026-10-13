@@ -196,6 +196,31 @@ OUTPUT: A single unified, realistic image of the shopper in a thoughtfully style
             );
           }
           if (supabaseAdmin) {
+            let lookImagePath: string | null = null;
+            try {
+              const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
+              const folder = userId
+                ? `${userId}/generations`
+                : `guest/${crypto.randomUUID()}/generations`;
+              const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+              const upload = await supabaseAdmin.storage
+                .from("shoplook-media")
+                .upload(path, Buffer.from(image.b64_json, "base64"), {
+                  contentType: mime,
+                  upsert: false,
+                });
+              if (upload.error) {
+                console.error("[shoplook] look image upload failed", upload.error.message);
+              } else {
+                lookImagePath = path;
+              }
+            } catch (error) {
+              console.error(
+                "[shoplook] look image upload failed",
+                error instanceof Error ? error.message : error,
+              );
+            }
+
             await supabaseAdmin
               .from("shopper_events")
               .insert({
@@ -203,6 +228,7 @@ OUTPUT: A single unified, realistic image of the shopper in a thoughtfully style
                 actor_type: userId ? "auth" : "guest",
                 user_id: userId,
                 catalog_product_id: catalogProductId,
+                look_image_path: lookImagePath,
                 metadata: {
                   product_name: productName,
                   retailer,

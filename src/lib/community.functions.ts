@@ -128,11 +128,14 @@ function profileName(firstName: string, surname: string) {
 }
 
 function slugifyLookName(name: string) {
+  // Trim edges after slicing so a 32-char cut never leaves a trailing hyphen
+  // (that would become "--" when the random suffix is appended and fail
+  // saved_looks_share_slug_check: ^[a-z0-9]+(?:-[a-z0-9]+)*$).
   const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 32);
+    .slice(0, 32)
+    .replace(/^-+|-+$/g, "");
   return slug || "look";
 }
 
@@ -144,7 +147,8 @@ function randomSlugSuffix(length = 6) {
 
 function buildShareSlug(productName: string | null | undefined) {
   const base = slugifyLookName(productName ?? "look");
-  return `${base}-${randomSlugSuffix()}`.slice(0, 48);
+  const suffix = randomSlugSuffix();
+  return `${base}-${suffix}`.slice(0, 48).replace(/-+$/g, "") || `look-${suffix}`;
 }
 
 async function mintShareSlug(

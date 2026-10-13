@@ -812,6 +812,7 @@ export type Database = {
         Args: { _email: string; _password: string }
         Returns: Json
       }
+      admin_login_google: { Args: Record<string, never>; Returns: Json }
       admin_logout: { Args: { _token: string }; Returns: undefined }
       admin_session: { Args: { _token: string }; Returns: Json }
       claim_ai_generation_cooldown: {

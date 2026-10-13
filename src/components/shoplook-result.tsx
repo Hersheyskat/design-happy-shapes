@@ -96,16 +96,21 @@ export function ShopLookResult(props: Props) {
 
   const normalize = (value: string) => value.toLowerCase().replace(/t[\s-]*shirts?\b/g, "tshirt").replace(/\bshirts\b/g, "shirt").replace(/\bjackets\b/g, "jacket").replace(/\bdresses\b/g, "dress").replace(/\bjeans\b/g, "jean");
   const audienceProducts = props.products.filter((item) => item.audience === audience);
-  const categories = ["All", ...Array.from(new Set(audienceProducts.map((item) => item.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
   const draftRetailers = ["All", ...brandFilterOptions(props.products.filter((item) => item.audience === draftAudience).map((item) => item.retailer), draftAudience)];
   const terms = normalize(search).trim().split(/\s+/).filter(Boolean);
-  const matchingProducts = audienceProducts.filter((item) => {
-    if (category !== "All" && item.category !== category) return false;
+  const scopedProducts = audienceProducts.filter((item) => {
     if (retailer !== "All" && item.retailer !== retailer) return false;
+    if (!terms.length) return true;
     const text = normalize(`${item.name} ${item.category} ${item.subcategory ?? ""} ${item.retailer}`);
     return terms.every((term) => text.includes(term));
   });
+  const categories = ["All", ...Array.from(new Set(scopedProducts.map((item) => item.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
+  const activeCategory = category !== "All" && !categories.includes(category) ? "All" : category;
+  const matchingProducts = scopedProducts.filter((item) => activeCategory === "All" || item.category === activeCategory);
   const filterCount = (audience !== props.product.audience ? 1 : 0) + (retailer !== "All" ? 1 : 0);
+  useEffect(() => {
+    if (category !== activeCategory) setCategory(activeCategory);
+  }, [category, activeCategory]);
   const { product, completed, generating, selected, saving } = props;
   const sharing = Boolean(props.sharing);
   const showCompare = saving || props.comparisonCount > 0;
@@ -187,7 +192,7 @@ export function ShopLookResult(props: Props) {
 
       {categories.length > 1 && (
         <div className="mt-4 px-5">
-          <TextTabs label="Category" options={categories} value={category} onChange={setCategory} />
+          <TextTabs label="Category" options={categories} value={activeCategory} onChange={setCategory} />
         </div>
       )}
 

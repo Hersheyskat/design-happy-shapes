@@ -33,15 +33,19 @@ function ShopPage() {
   }, [loadCatalog]);
 
   const audienceProducts = products.filter((product) => product.audience === audience);
-  const categories = ["All", ...Array.from(new Set(audienceProducts.map((product) => product.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
   const draftRetailers = ["All", ...brandFilterOptions(products.filter((product) => product.audience === draftAudience).map((product) => product.retailer), draftAudience)];
   const term = query.trim().toLowerCase();
-  const filtered = audienceProducts.filter((product) => {
-    if (category !== "All" && product.category !== category) return false;
+  const scopedProducts = audienceProducts.filter((product) => {
     if (retailer !== "All" && product.retailer !== retailer) return false;
     return !term || `${product.name} ${product.retailer} ${product.category} ${product.subcategory ?? ""}`.toLowerCase().includes(term);
   });
+  const categories = ["All", ...Array.from(new Set(scopedProducts.map((product) => product.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
+  const activeCategory = category !== "All" && !categories.includes(category) ? "All" : category;
+  const filtered = scopedProducts.filter((product) => activeCategory === "All" || product.category === activeCategory);
   const filterCount = (retailer !== "All" ? 1 : 0);
+  useEffect(() => {
+    if (category !== activeCategory) setCategory(activeCategory);
+  }, [category, activeCategory]);
 
   return <ShopLookShell>
     <header className="border-b border-border px-5 pb-5 pt-7">
@@ -84,7 +88,7 @@ function ShopPage() {
       {categories.length > 1 && (
         <div className="mt-4 flex gap-5 overflow-x-auto border-b border-border" role="tablist" aria-label="Category">
           {categories.map((option) => {
-            const active = category === option;
+            const active = activeCategory === option;
             return (
               <button
                 key={option}

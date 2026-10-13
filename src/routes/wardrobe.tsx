@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { addWardrobeItems, listWardrobe, removeWardrobeItem, suggestWardrobe } from "@/lib/wardrobe.functions";
 import { listCatalogProducts, saveMyLook } from "@/lib/community.functions";
 import { analyseGeneratedLook } from "@/lib/stylist-comment.functions";
+import { recordShopperEvent } from "@/lib/shopper-events.functions";
 import { streamImage } from "@/lib/wardrobe-stream-image";
 import { wardrobeCategories, type WardrobeItem, type WardrobeOutfit } from "@/lib/wardrobe.types";
 import type { CatalogProductDto } from "@/lib/community.types";
@@ -33,6 +34,7 @@ function WardrobePage() {
   const suggest = useServerFn(suggestWardrobe);
   const getCatalog = useServerFn(listCatalogProducts);
   const saveLook = useServerFn(saveMyLook);
+  const trackEvent = useServerFn(recordShopperEvent);
   const getComment = useServerFn(analyseGeneratedLook);
   const [userId, setUserId] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -118,6 +120,32 @@ function WardrobePage() {
       setResult({ image: completed, outfit, productId, comment: "", saved: false });
       resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       void getComment({ data: { lookImage: completed, productName: outfit.title, retailer: "Your wardrobe" } }).then((reply) => { if (reply.ok) setResult((current) => current?.image === completed ? { ...current, comment: reply.comment } : current); }).catch(() => {});
+      void (async () => {
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          if (!userData.user) return;
+          const blob = await (await fetch(completed)).blob();
+          const ext = blob.type === "image/webp" ? "webp" : blob.type === "image/jpeg" ? "jpg" : "png";
+          const path = `${userData.user.id}/generations/${crypto.randomUUID()}.${ext}`;
+          const uploaded = await supabase.storage.from("shoplook-media").upload(path, blob, { contentType: blob.type || "image/png" });
+          if (uploaded.error) return;
+          await trackEvent({
+            data: {
+              eventType: "look_created",
+              lookImagePath: path,
+              catalogProductId: productId,
+              metadata: {
+                product_name: outfit.title,
+                retailer: "Your wardrobe",
+                source: "wardrobe",
+                occasion: realOccasion,
+              },
+            },
+          });
+        } catch {
+          // Admin logging must not block the wardrobe result.
+        }
+      })();
     }));
   };
   const heart = () => { if (!result || result.saved) return; void requireSignIn(() => void run("save", async () => {

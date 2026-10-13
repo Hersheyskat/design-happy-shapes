@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { MessageCircle, Heart, Home, UserRound, Shirt } from "lucide-react";
+import { MessageCircle, Heart, Home, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function ShopLookShell({ children }: { children: ReactNode }) {
@@ -9,11 +9,10 @@ export function ShopLookShell({ children }: { children: ReactNode }) {
         {children}
       </div>
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 mx-auto grid h-16 max-w-[430px] grid-cols-5 border-x border-t border-border bg-background/95 backdrop-blur"
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto grid h-16 max-w-[430px] grid-cols-4 border-x border-t border-border bg-background/95 backdrop-blur"
         aria-label="ShopLook navigation"
       >
         <NavItem to="/" label="Look" icon={<Home />} />
-        <NavItem to="/wardrobe" label="Wardrobe" icon={<Shirt />} />
         <NavItem to="/chat" label="Chat" icon={<MessageCircle />} />
         <NavItem to="/saved" label="Saved" icon={<Heart />} />
         <NavItem to="/profile" label="Profile" icon={<UserRound />} />
@@ -27,7 +26,7 @@ function NavItem({
   label,
   icon,
 }: {
-  to: "/" | "/wardrobe" | "/chat" | "/saved" | "/profile";
+  to: "/" | "/chat" | "/saved" | "/profile";
   label: string;
   icon: ReactNode;
 }) {

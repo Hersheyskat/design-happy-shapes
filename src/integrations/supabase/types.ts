@@ -10,10 +10,60 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.18"
   }
   public: {
     Tables: {
+      admin_sessions: {
+        Row: {
+          admin_id: string
+          created_at: string
+          expires_at: string
+          token: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          expires_at: string
+          token?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          expires_at?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sessions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          password_hash: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          password_hash: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          password_hash?: string
+        }
+        Relationships: []
+      }
       ai_generation_cooldowns: {
         Row: {
           client_hash: string
@@ -38,6 +88,7 @@ export type Database = {
           availability: string
           batch_id: string
           category: string
+          subcategory: string | null
           created_at: string
           currency: string
           display_order: number
@@ -57,6 +108,7 @@ export type Database = {
           availability?: string
           batch_id: string
           category: string
+          subcategory?: string | null
           created_at?: string
           currency?: string
           display_order: number
@@ -76,6 +128,7 @@ export type Database = {
           availability?: string
           batch_id?: string
           category?: string
+          subcategory?: string | null
           created_at?: string
           currency?: string
           display_order?: number
@@ -88,6 +141,42 @@ export type Database = {
           refreshed_at?: string
           retailer?: string
           source_image_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalog_categories: {
+        Row: {
+          id: string
+          audience: string
+          name: string
+          slug: string
+          parent_id: string | null
+          display_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          audience: string
+          name: string
+          slug: string
+          parent_id?: string | null
+          display_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          audience?: string
+          name?: string
+          slug?: string
+          parent_id?: string | null
+          display_order?: number
+          is_active?: boolean
+          created_at?: string
           updated_at?: string
         }
         Relationships: []
@@ -156,6 +245,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      guest_look_quotas: {
+        Row: {
+          created_at: string
+          generation_count: number
+          ip_hash: string
+          last_generated_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          generation_count?: number
+          ip_hash: string
+          last_generated_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          generation_count?: number
+          ip_hash?: string
+          last_generated_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       follows: {
         Row: {
@@ -274,9 +387,11 @@ export type Database = {
           bio: string
           created_at: string
           display_name: string
+          first_name: string
           handle: string
           id: string
           style_preferences: string[]
+          surname: string
           updated_at: string
         }
         Insert: {
@@ -284,9 +399,11 @@ export type Database = {
           bio?: string
           created_at?: string
           display_name: string
+          first_name?: string
           handle: string
           id: string
           style_preferences?: string[]
+          surname?: string
           updated_at?: string
         }
         Update: {
@@ -294,9 +411,11 @@ export type Database = {
           bio?: string
           created_at?: string
           display_name?: string
+          first_name?: string
           handle?: string
           id?: string
           style_preferences?: string[]
+          surname?: string
           updated_at?: string
         }
         Relationships: []
@@ -363,6 +482,7 @@ export type Database = {
           product_retailer: string | null
           product_url: string | null
           published_at: string | null
+          share_slug: string | null
           shopper_image_path: string
           style_note: string
           summary: string
@@ -386,6 +506,7 @@ export type Database = {
           product_retailer?: string | null
           product_url?: string | null
           published_at?: string | null
+          share_slug?: string | null
           shopper_image_path: string
           style_note?: string
           summary: string
@@ -409,6 +530,7 @@ export type Database = {
           product_retailer?: string | null
           product_url?: string | null
           published_at?: string | null
+          share_slug?: string | null
           shopper_image_path?: string
           style_note?: string
           summary?: string
@@ -432,26 +554,158 @@ export type Database = {
           },
         ]
       }
+      shopper_events: {
+        Row: {
+          actor_type: string
+          catalog_product_id: string | null
+          channel: string | null
+          created_at: string
+          event_type: string
+          id: string
+          look_image_path: string | null
+          metadata: Json
+          saved_look_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          actor_type: string
+          catalog_product_id?: string | null
+          channel?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          look_image_path?: string | null
+          metadata?: Json
+          saved_look_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          actor_type?: string
+          catalog_product_id?: string | null
+          channel?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          look_image_path?: string | null
+          metadata?: Json
+          saved_look_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopper_events_catalog_product_id_fkey"
+            columns: ["catalog_product_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopper_events_saved_look_id_fkey"
+            columns: ["saved_look_id"]
+            isOneToOne: false
+            referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stylist_conversations: {
         Row: {
+          active_comment: string | null
+          active_product_name: string | null
+          active_saved_look_id: string | null
+          active_session_image_path: string | null
           messages: Json
           revision: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          active_comment?: string | null
+          active_product_name?: string | null
+          active_saved_look_id?: string | null
+          active_session_image_path?: string | null
           messages?: Json
           revision?: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          active_comment?: string | null
+          active_product_name?: string | null
+          active_saved_look_id?: string | null
+          active_session_image_path?: string | null
           messages?: Json
           revision?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stylist_conversations_active_saved_look_id_fkey"
+            columns: ["active_saved_look_id"]
+            isOneToOne: false
+            referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stylist_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stylist_messages: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          parts: Json
+          product_name: string | null
+          role: string
+          saved_look_id: string | null
+          session_image_path: string | null
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id: string
+          parts?: Json
+          product_name?: string | null
+          role: string
+          saved_look_id?: string | null
+          session_image_path?: string | null
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          parts?: Json
+          product_name?: string | null
+          role?: string
+          saved_look_id?: string | null
+          session_image_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stylist_messages_saved_look_id_fkey"
+            columns: ["saved_look_id"]
+            isOneToOne: false
+            referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stylist_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_blocks: {
         Row: {
@@ -518,9 +772,60 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_dashboard: { Args: { _token: string }; Returns: Json }
+      admin_delete_catalog_product: { Args: { _id: string; _token: string }; Returns: Json }
+      admin_get_catalog_product: { Args: { _id: string; _token: string }; Returns: Json }
+      admin_list_catalog: {
+        Args: {
+          _active?: string
+          _audience?: string
+          _availability?: string
+          _dir?: string
+          _limit?: number
+          _offset?: number
+          _retailer?: string
+          _search?: string
+          _sort?: string
+          _token: string
+        }
+        Returns: Json
+      }
+      admin_require_email: { Args: { _token: string }; Returns: string }
+      admin_upsert_catalog_product: { Args: { _product: Json; _token: string }; Returns: Json }
+      admin_list_activity: {
+        Args: {
+          _actor?: string
+          _channel?: string
+          _dir?: string
+          _kind: string
+          _limit?: number
+          _offset?: number
+          _published?: boolean
+          _range?: string
+          _search?: string
+          _sort?: string
+          _token: string
+        }
+        Returns: Json
+      }
+      admin_login: {
+        Args: { _email: string; _password: string }
+        Returns: Json
+      }
+      admin_login_google: { Args: Record<string, never>; Returns: Json }
+      admin_logout: { Args: { _token: string }; Returns: undefined }
+      admin_session: { Args: { _token: string }; Returns: Json }
       claim_ai_generation_cooldown: {
         Args: { _client_hash: string }
         Returns: boolean
+      }
+      claim_guest_look_generation: {
+        Args: { _ip_hash: string; _max_count?: number }
+        Returns: number
+      }
+      release_guest_look_generation: {
+        Args: { _ip_hash: string }
+        Returns: undefined
       }
     }
     Enums: {

@@ -1,0 +1,10 @@
+---
+description: Use only the ShopLook Supabase MCP in this repository
+alwaysApply: true
+---
+
+# ShopLook Supabase MCP
+
+This repository is ShopLook. For every Supabase task here — schema, SQL, auth, storage, logs, advisors, keys, and types — use only the MCP namespace `user-supabase shoplook`.
+
+Do not use `user-supabase promptsend` or any other Supabase project from this repository.

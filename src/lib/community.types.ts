@@ -20,6 +20,7 @@ export type SavedLookDto = {
   mood: StyleMood;
   advice: StyleAdvice;
   isPublished: boolean;
+  shareSlug: string | null;
   createdAt: string;
   items: Array<{ id: string; label: string; searchTerm: string; destinationUrl: string; source: "submitted" | "suggested" }>;
   likeCount: number;
@@ -31,6 +32,7 @@ export type CatalogProductDto = {
   audience: "men" | "women";
   name: string;
   category: string;
+  subcategory: string | null;
   retailer: string;
   price: number;
   currency: string;

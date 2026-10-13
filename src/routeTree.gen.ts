@@ -20,6 +20,8 @@ import { Route as ApiGenerateLookRouteImport } from './routes/api/generate-look'
 import { Route as ApiStylistChatRouteImport } from './routes/api/stylist-chat'
 import { Route as ApiSuggestCatalogRouteImport } from './routes/api/suggest-catalog'
 import { Route as ApiWardrobeLookRouteImport } from './routes/api/wardrobe-look'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as LSlugRouteImport } from './routes/l.$slug'
 import { Route as LookLookIdRouteImport } from './routes/look.$lookId'
 import { Route as ProfileHandleRouteImport } from './routes/profile.$handle'
 import { Route as SavedLookLookIdRouteImport } from './routes/saved-look.$lookId'
@@ -79,6 +81,16 @@ const ApiWardrobeLookRoute = ApiWardrobeLookRouteImport.update({
   path: '/api/wardrobe-look',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LSlugRoute = LSlugRouteImport.update({
+  id: '/l/$slug',
+  path: '/l/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LookLookIdRoute = LookLookIdRouteImport.update({
   id: '/look/$lookId',
   path: '/look/$lookId',
@@ -107,6 +119,8 @@ export interface FileRoutesByFullPath {
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/api/wardrobe-look': typeof ApiWardrobeLookRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/l/$slug': typeof LSlugRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/saved-look/$lookId': typeof SavedLookLookIdRoute
@@ -123,6 +137,8 @@ export interface FileRoutesByTo {
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/api/wardrobe-look': typeof ApiWardrobeLookRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/l/$slug': typeof LSlugRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/saved-look/$lookId': typeof SavedLookLookIdRoute
@@ -140,6 +156,8 @@ export interface FileRoutesById {
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/api/wardrobe-look': typeof ApiWardrobeLookRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/l/$slug': typeof LSlugRoute
   '/look/$lookId': typeof LookLookIdRoute
   '/profile/$handle': typeof ProfileHandleRoute
   '/saved-look/$lookId': typeof SavedLookLookIdRoute
@@ -158,6 +176,8 @@ export interface FileRouteTypes {
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/api/wardrobe-look'
+    | '/auth/callback'
+    | '/l/$slug'
     | '/look/$lookId'
     | '/profile/$handle'
     | '/saved-look/$lookId'
@@ -174,6 +194,8 @@ export interface FileRouteTypes {
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/api/wardrobe-look'
+    | '/auth/callback'
+    | '/l/$slug'
     | '/look/$lookId'
     | '/profile/$handle'
     | '/saved-look/$lookId'
@@ -190,6 +212,8 @@ export interface FileRouteTypes {
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/api/wardrobe-look'
+    | '/auth/callback'
+    | '/l/$slug'
     | '/look/$lookId'
     | '/profile/$handle'
     | '/saved-look/$lookId'
@@ -207,6 +231,8 @@ export interface RootRouteChildren {
   ApiStylistChatRoute: typeof ApiStylistChatRoute
   ApiSuggestCatalogRoute: typeof ApiSuggestCatalogRoute
   ApiWardrobeLookRoute: typeof ApiWardrobeLookRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  LSlugRoute: typeof LSlugRoute
   LookLookIdRoute: typeof LookLookIdRoute
   SavedLookLookIdRoute: typeof SavedLookLookIdRoute
 }
@@ -290,6 +316,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWardrobeLookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/l/$slug': {
+      id: '/l/$slug'
+      path: '/l/$slug'
+      fullPath: '/l/$slug'
+      preLoaderRoute: typeof LSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/look/$lookId': {
       id: '/look/$lookId'
       path: '/look/$lookId'
@@ -337,6 +377,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStylistChatRoute: ApiStylistChatRoute,
   ApiSuggestCatalogRoute: ApiSuggestCatalogRoute,
   ApiWardrobeLookRoute: ApiWardrobeLookRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  LSlugRoute: LSlugRoute,
   LookLookIdRoute: LookLookIdRoute,
   SavedLookLookIdRoute: SavedLookLookIdRoute,
 }

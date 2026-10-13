@@ -70,22 +70,25 @@ export function sortBrandNames(names: string[], audience: "women" | "men"): stri
 }
 
 /**
- * Brand chips for the shopper filter: curated allowlist only, in client order,
- * capped so the drawer stays short (default top 10 that actually have products).
+ * Brand chips for the shopper filter: every retailer that currently has
+ * available catalogue products for the audience, sorted by curated order.
  * Prefer canonical allowlist spelling so chips stay consistent.
  */
 export function brandFilterOptions(
   names: string[],
   audience: "women" | "men",
-  limit = 10,
 ): string[] {
   const order = audience === "women" ? WOMEN_BRAND_ORDER : MEN_BRAND_ORDER;
-  const present = new Set(names.map((name) => name.trim().toLowerCase()).filter(Boolean));
-  const options: string[] = [];
-  for (const brand of order) {
-    if (!present.has(brand.toLowerCase())) continue;
-    options.push(brand);
-    if (options.length >= limit) break;
+  const canonical = new Map(order.map((name) => [name.toLowerCase(), name]));
+  const present = new Map<string, string>();
+
+  for (const name of names) {
+    const trimmed = name.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (present.has(key)) continue;
+    present.set(key, canonical.get(key) ?? trimmed);
   }
-  return options;
+
+  return sortBrandNames(Array.from(present.values()), audience);
 }

@@ -34,7 +34,7 @@ function ShopPage() {
 
   const audienceProducts = products.filter((product) => product.audience === audience);
   const categories = ["All", ...Array.from(new Set(audienceProducts.map((product) => product.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
-  const draftRetailers = ["All", ...brandFilterOptions(Array.from(new Set(products.filter((product) => product.audience === draftAudience).map((product) => product.retailer).filter(Boolean))), draftAudience, 10)];
+  const draftRetailers = ["All", ...brandFilterOptions(products.filter((product) => product.audience === draftAudience).map((product) => product.retailer), draftAudience)];
   const term = query.trim().toLowerCase();
   const filtered = audienceProducts.filter((product) => {
     if (category !== "All" && product.category !== category) return false;
@@ -128,13 +128,13 @@ function ShopPage() {
     </section>
 
     <Drawer open={filterOpen} onOpenChange={setFilterOpen}>
-      <DrawerContent className="mx-auto max-w-[430px]">
-        <DrawerHeader className="text-left">
+      <DrawerContent className="mx-auto max-h-[85dvh] max-w-[430px] overflow-hidden">
+        <DrawerHeader className="shrink-0 text-left">
           <DrawerTitle>Filter shop</DrawerTitle>
           <DrawerDescription>Brand and catalogue live here so the grid stays clean.</DrawerDescription>
         </DrawerHeader>
-        <div className="space-y-6 px-4 pb-2">
-          <div>
+        <div className="min-h-0 flex-1 space-y-6 px-4 pb-2">
+          <div className="shrink-0">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Catalogue</p>
             <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="Catalogue">
               {(["women", "men"] as const).map((option) => (
@@ -151,25 +151,27 @@ function ShopPage() {
             </div>
           </div>
           {draftRetailers.length > 1 && (
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Brand</p>
-              <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Brand">
-                {draftRetailers.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={draftRetailer === option}
-                    className={`h-9 rounded-md border px-3 text-sm transition-colors ${draftRetailer === option ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground"}`}
-                    onClick={() => setDraftRetailer(option)}
-                  >
-                    {option}
-                  </button>
-                ))}
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">Brand</p>
+              <div className="mt-3 min-h-0 max-h-[36vh] flex-1 overflow-y-auto overscroll-contain pr-1" role="group" aria-label="Brand">
+                <div className="flex flex-wrap gap-2">
+                  {draftRetailers.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={draftRetailer === option}
+                      className={`h-9 rounded-md border px-3 text-sm transition-colors ${draftRetailer === option ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground"}`}
+                      onClick={() => setDraftRetailer(option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
         </div>
-        <DrawerFooter className="grid grid-cols-2 gap-2">
+        <DrawerFooter className="shrink-0 grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" onClick={() => { setDraftAudience("women"); setDraftRetailer("All"); }}>Clear</Button>
           <DrawerClose asChild>
             <Button type="button" onClick={() => { setAudience(draftAudience); setRetailer(draftRetailer); setCategory("All"); setFilterOpen(false); }}>Show products</Button>

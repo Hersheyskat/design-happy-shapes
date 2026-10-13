@@ -97,7 +97,7 @@ export function ShopLookResult(props: Props) {
   const normalize = (value: string) => value.toLowerCase().replace(/t[\s-]*shirts?\b/g, "tshirt").replace(/\bshirts\b/g, "shirt").replace(/\bjackets\b/g, "jacket").replace(/\bdresses\b/g, "dress").replace(/\bjeans\b/g, "jean");
   const audienceProducts = props.products.filter((item) => item.audience === audience);
   const categories = ["All", ...Array.from(new Set(audienceProducts.map((item) => item.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
-  const draftRetailers = ["All", ...brandFilterOptions(Array.from(new Set(props.products.filter((item) => item.audience === draftAudience).map((item) => item.retailer).filter(Boolean))), draftAudience, 10)];
+  const draftRetailers = ["All", ...brandFilterOptions(props.products.filter((item) => item.audience === draftAudience).map((item) => item.retailer), draftAudience)];
   const terms = normalize(search).trim().split(/\s+/).filter(Boolean);
   const matchingProducts = audienceProducts.filter((item) => {
     if (category !== "All" && item.category !== category) return false;
@@ -237,13 +237,13 @@ export function ShopLookResult(props: Props) {
     </section>
 
     <Drawer open={filterOpen} onOpenChange={setFilterOpen}>
-      <DrawerContent className="mx-auto max-w-[430px]">
-        <DrawerHeader className="text-left">
+      <DrawerContent className="mx-auto max-h-[85dvh] max-w-[430px] overflow-hidden">
+        <DrawerHeader className="shrink-0 text-left">
           <DrawerTitle>Filter looks</DrawerTitle>
           <DrawerDescription>Narrow the catalogue without crowding the grid.</DrawerDescription>
         </DrawerHeader>
-        <div className="space-y-6 px-4 pb-2">
-          <div>
+        <div className="min-h-0 flex-1 space-y-6 px-4 pb-2">
+          <div className="shrink-0">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Catalogue</p>
             <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label="Catalogue">
               {(["women", "men"] as const).map((option) => (
@@ -263,25 +263,27 @@ export function ShopLookResult(props: Props) {
             </div>
           </div>
           {draftRetailers.length > 1 && (
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Brand</p>
-              <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Brand">
-                {draftRetailers.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={draftRetailer === option}
-                    className={`h-9 rounded-md border px-3 text-sm transition-colors ${draftRetailer === option ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground"}`}
-                    onClick={() => setDraftRetailer(option)}
-                  >
-                    {option}
-                  </button>
-                ))}
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">Brand</p>
+              <div className="mt-3 min-h-0 max-h-[36vh] flex-1 overflow-y-auto overscroll-contain pr-1" role="group" aria-label="Brand">
+                <div className="flex flex-wrap gap-2">
+                  {draftRetailers.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={draftRetailer === option}
+                      className={`h-9 rounded-md border px-3 text-sm transition-colors ${draftRetailer === option ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground"}`}
+                      onClick={() => setDraftRetailer(option)}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
         </div>
-        <DrawerFooter className="grid grid-cols-2 gap-2">
+        <DrawerFooter className="shrink-0 grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" onClick={clearFilters}>Clear</Button>
           <DrawerClose asChild>
             <Button type="button" onClick={applyFilters}>Show looks</Button>

@@ -70,7 +70,6 @@ export function ShopLookResult(props: Props) {
   const [search, setSearch] = useState("");
   const [audience, setAudience] = useState<"women" | "men">(props.product.audience);
   const [category, setCategory] = useState("All");
-  const [subcategory, setSubcategory] = useState("All");
   const [retailer, setRetailer] = useState("All");
   const [filterOpen, setFilterOpen] = useState(false);
   const [draftAudience, setDraftAudience] = useState<"women" | "men">(props.product.audience);
@@ -90,7 +89,6 @@ export function ShopLookResult(props: Props) {
   useEffect(() => {
     setAudience(props.product.audience);
     setCategory("All");
-    setSubcategory("All");
     setRetailer("All");
     setSearch("");
   }, [props.product.id, props.product.audience]);
@@ -98,13 +96,10 @@ export function ShopLookResult(props: Props) {
   const normalize = (value: string) => value.toLowerCase().replace(/t[\s-]*shirts?\b/g, "tshirt").replace(/\bshirts\b/g, "shirt").replace(/\bjackets\b/g, "jacket").replace(/\bdresses\b/g, "dress").replace(/\bjeans\b/g, "jean");
   const audienceProducts = props.products.filter((item) => item.audience === audience);
   const categories = ["All", ...Array.from(new Set(audienceProducts.map((item) => item.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
-  const categoryProducts = category === "All" ? audienceProducts : audienceProducts.filter((item) => item.category === category);
-  const subcategories = ["All", ...Array.from(new Set(categoryProducts.map((item) => item.subcategory).filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b))];
   const draftRetailers = ["All", ...Array.from(new Set(props.products.filter((item) => item.audience === draftAudience).map((item) => item.retailer).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
   const terms = normalize(search).trim().split(/\s+/).filter(Boolean);
   const matchingProducts = audienceProducts.filter((item) => {
     if (category !== "All" && item.category !== category) return false;
-    if (subcategory !== "All" && item.subcategory !== subcategory) return false;
     if (retailer !== "All" && item.retailer !== retailer) return false;
     const text = normalize(`${item.name} ${item.category} ${item.subcategory ?? ""} ${item.retailer}`);
     return terms.every((term) => text.includes(term));
@@ -124,7 +119,6 @@ export function ShopLookResult(props: Props) {
     setAudience(draftAudience);
     setRetailer(draftRetailer);
     setCategory("All");
-    setSubcategory("All");
     setFilterOpen(false);
   }
 
@@ -192,20 +186,7 @@ export function ShopLookResult(props: Props) {
 
       {categories.length > 1 && (
         <div className="mt-4 px-5">
-          <TextTabs
-            label="Category"
-            options={categories}
-            value={category}
-            onChange={(value) => {
-              setCategory(value);
-              setSubcategory("All");
-            }}
-          />
-        </div>
-      )}
-      {subcategories.length > 1 && (
-        <div className="mt-3 px-5">
-          <TextTabs label="Subcategory" options={subcategories} value={subcategory} onChange={setSubcategory} />
+          <TextTabs label="Category" options={categories} value={category} onChange={setCategory} />
         </div>
       )}
 

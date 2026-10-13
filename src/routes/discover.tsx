@@ -19,7 +19,6 @@ function ShopPage() {
   const [products, setProducts] = useState<CatalogProductDto[]>([]);
   const [audience, setAudience] = useState<"women" | "men">("women");
   const [category, setCategory] = useState("All");
-  const [subcategory, setSubcategory] = useState("All");
   const [retailer, setRetailer] = useState("All");
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -34,13 +33,10 @@ function ShopPage() {
 
   const audienceProducts = products.filter((product) => product.audience === audience);
   const categories = ["All", ...Array.from(new Set(audienceProducts.map((product) => product.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
-  const categoryProducts = category === "All" ? audienceProducts : audienceProducts.filter((product) => product.category === category);
-  const subcategories = ["All", ...Array.from(new Set(categoryProducts.map((product) => product.subcategory).filter((value): value is string => Boolean(value)))).sort((a, b) => a.localeCompare(b))];
   const draftRetailers = ["All", ...Array.from(new Set(products.filter((product) => product.audience === draftAudience).map((product) => product.retailer).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
   const term = query.trim().toLowerCase();
   const filtered = audienceProducts.filter((product) => {
     if (category !== "All" && product.category !== category) return false;
-    if (subcategory !== "All" && product.subcategory !== subcategory) return false;
     if (retailer !== "All" && product.retailer !== retailer) return false;
     return !term || `${product.name} ${product.retailer} ${product.category} ${product.subcategory ?? ""}`.toLowerCase().includes(term);
   });
@@ -76,7 +72,7 @@ function ShopPage() {
               role="tab"
               aria-selected={active}
               className={`shrink-0 border-b-2 pb-2.5 text-sm capitalize transition-colors ${active ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground"}`}
-              onClick={() => { setAudience(option); setCategory("All"); setSubcategory("All"); setRetailer("All"); }}
+              onClick={() => { setAudience(option); setCategory("All"); setRetailer("All"); }}
             >
               {option === "women" ? "Women" : "Men"}
             </button>
@@ -95,27 +91,7 @@ function ShopPage() {
                 role="tab"
                 aria-selected={active}
                 className={`shrink-0 border-b-2 pb-2.5 text-sm transition-colors ${active ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground"}`}
-                onClick={() => { setCategory(option); setSubcategory("All"); }}
-              >
-                {option}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {subcategories.length > 1 && (
-        <div className="mt-3 flex gap-5 overflow-x-auto border-b border-border" role="tablist" aria-label="Subcategory">
-          {subcategories.map((option) => {
-            const active = subcategory === option;
-            return (
-              <button
-                key={option}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                className={`shrink-0 border-b-2 pb-2.5 text-sm transition-colors ${active ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground"}`}
-                onClick={() => setSubcategory(option)}
+                onClick={() => setCategory(option)}
               >
                 {option}
               </button>
@@ -195,7 +171,7 @@ function ShopPage() {
         <DrawerFooter className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" onClick={() => { setDraftAudience("women"); setDraftRetailer("All"); }}>Clear</Button>
           <DrawerClose asChild>
-            <Button type="button" onClick={() => { setAudience(draftAudience); setRetailer(draftRetailer); setCategory("All"); setSubcategory("All"); setFilterOpen(false); }}>Show products</Button>
+            <Button type="button" onClick={() => { setAudience(draftAudience); setRetailer(draftRetailer); setCategory("All"); setFilterOpen(false); }}>Show products</Button>
           </DrawerClose>
         </DrawerFooter>
       </DrawerContent>

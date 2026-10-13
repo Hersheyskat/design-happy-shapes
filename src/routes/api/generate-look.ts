@@ -15,6 +15,23 @@ function readUuid(value: FormDataEntryValue | null | undefined) {
   return typeof value === "string" && uuidPattern.test(value) ? value : null;
 }
 
+function readFiniteNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
+  return null;
+}
+
+function openRouterUsageMeta(usage: unknown) {
+  const row = usage && typeof usage === "object" ? (usage as Record<string, unknown>) : null;
+  return {
+    openrouter_cost_usd: readFiniteNumber(row?.cost),
+    openrouter_prompt_tokens: readFiniteNumber(row?.prompt_tokens),
+    openrouter_completion_tokens: readFiniteNumber(row?.completion_tokens),
+    openrouter_total_tokens: readFiniteNumber(row?.total_tokens),
+    openrouter_model: "google/gemini-3.1-flash-image",
+  };
+}
+
 async function signedInUserId(request: Request) {
   const header = request.headers.get("authorization");
   const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
@@ -173,6 +190,7 @@ OUTPUT: A single unified, realistic image of the shopper in a thoughtfully style
           });
           const result = json as {
             data?: { b64_json?: string; media_type?: string }[];
+            usage?: unknown;
             error?: { message?: string };
           } | null;
           if (status < 200 || status >= 300) {
@@ -195,8 +213,15 @@ OUTPUT: A single unified, realistic image of the shopper in a thoughtfully style
               { status: 502 },
             );
           }
+          const usageMeta = openRouterUsageMeta(result?.usage);
+          console.info("[shoplook] openrouter look usage", {
+            cost_usd: usageMeta.openrouter_cost_usd,
+            total_tokens: usageMeta.openrouter_total_tokens,
+            has_admin: hasAdmin,
+          });
+          let lookImagePath: string | null = null;
+          let eventLogged = false;
           if (supabaseAdmin) {
-            let lookImagePath: string | null = null;
             try {
               const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
               const folder = userId
@@ -221,27 +246,44 @@ OUTPUT: A single unified, realistic image of the shopper in a thoughtfully style
               );
             }
 
-            await supabaseAdmin
-              .from("shopper_events")
-              .insert({
-                event_type: "look_created",
-                actor_type: userId ? "auth" : "guest",
-                user_id: userId,
-                catalog_product_id: catalogProductId,
-                look_image_path: lookImagePath,
-                metadata: {
-                  product_name: productName,
-                  retailer,
-                  audience,
-                  price: Number.isFinite(price) && price > 0 ? price : null,
-                },
-              })
-              .then(({ error }) => {
-                if (error) console.error("[shoplook] look_created event failed", error.message);
-              });
+            const { error: eventError } = await supabaseAdmin.from("shopper_events").insert({
+              event_type: "look_created",
+              actor_type: userId ? "auth" : "guest",
+              user_id: userId,
+              catalog_product_id: catalogProductId,
+              look_image_path: lookImagePath,
+              metadata: {
+                product_name: productName,
+                retailer,
+                audience,
+                price: Number.isFinite(price) && price > 0 ? price : null,
+                source: "generate_look",
+                ...usageMeta,
+              },
+            });
+            if (eventError) {
+              console.error("[shoplook] look_created event failed", eventError.message);
+            } else {
+              eventLogged = true;
+            }
+          } else {
+            console.error("[shoplook] look_created skipped: SUPABASE_SERVICE_ROLE_KEY missing");
           }
           return Response.json(
-            { image: `data:${mime};base64,${image.b64_json}` },
+            {
+              image: `data:${mime};base64,${image.b64_json}`,
+              lookImagePath,
+              eventLogged,
+              // Always return usage so the signed-in client fallback can persist cost
+              // when the service-role server insert is unavailable.
+              openrouter: {
+                cost_usd: usageMeta.openrouter_cost_usd,
+                prompt_tokens: usageMeta.openrouter_prompt_tokens,
+                completion_tokens: usageMeta.openrouter_completion_tokens,
+                total_tokens: usageMeta.openrouter_total_tokens,
+                model: usageMeta.openrouter_model,
+              },
+            },
             { headers: { "Cache-Control": "no-store" } },
           );
         } catch {

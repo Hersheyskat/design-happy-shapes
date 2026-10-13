@@ -382,7 +382,20 @@ function ShopLook() {
       form.append("catalogProductId", product.id); form.append("productName", product.name); form.append("retailer", product.retailer); form.append("audience", product.audience); form.append("price", String(product.price));
       const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
       const response = await fetch("/api/generate-look", { method: "POST", headers, body: form });
-      const result = await response.json().catch(() => ({})) as { image?: string; message?: string; code?: string };
+      const result = await response.json().catch(() => ({})) as {
+        image?: string;
+        message?: string;
+        code?: string;
+        lookImagePath?: string | null;
+        eventLogged?: boolean;
+        openrouter?: {
+          cost_usd?: number | null;
+          prompt_tokens?: number | null;
+          completion_tokens?: number | null;
+          total_tokens?: number | null;
+          model?: string | null;
+        };
+      };
       if (response.status === 401 && result.code === "login_required" && !token) {
         setPendingAction({ type: "generate", productId: product.id });
         setAuthOpen(true);
@@ -395,6 +408,50 @@ function ShopLook() {
       await nextImage.decode();
       setGenerated((current) => ({ ...current, [product.id]: result.image as string }));
       setActiveId(product.id);
+      if (token && !result.eventLogged) {
+        void (async () => {
+          try {
+            const { data: userData } = await supabase.auth.getUser();
+            if (!userData.user) return;
+            let lookImagePath = result.lookImagePath ?? null;
+            if (!lookImagePath || !lookImagePath.startsWith(`${userData.user.id}/`)) {
+              const blob = await (await fetch(result.image as string)).blob();
+              const ext = blob.type === "image/webp" ? "webp" : blob.type === "image/jpeg" ? "jpg" : "png";
+              const path = `${userData.user.id}/generations/${crypto.randomUUID()}.${ext}`;
+              const uploaded = await supabase.storage.from("shoplook-media").upload(path, blob, {
+                contentType: blob.type || "image/png",
+              });
+              if (uploaded.error) return;
+              lookImagePath = path;
+            }
+            const openrouter = result.openrouter;
+            await trackEvent({
+              data: {
+                eventType: "look_created",
+                lookImagePath,
+                catalogProductId: product.id,
+                metadata: {
+                  ...productMeta(product),
+                  source: "generate_look_client",
+                  openrouter_cost_usd:
+                    typeof openrouter?.cost_usd === "number" ? openrouter.cost_usd : null,
+                  openrouter_prompt_tokens:
+                    typeof openrouter?.prompt_tokens === "number" ? openrouter.prompt_tokens : null,
+                  openrouter_completion_tokens:
+                    typeof openrouter?.completion_tokens === "number"
+                      ? openrouter.completion_tokens
+                      : null,
+                  openrouter_total_tokens:
+                    typeof openrouter?.total_tokens === "number" ? openrouter.total_tokens : null,
+                  openrouter_model: openrouter?.model ?? "google/gemini-3.1-flash-image",
+                },
+              },
+            });
+          } catch {
+            // Admin logging must not block the look result.
+          }
+        })();
+      }
       setStylistLoading(product.id);
       setStylistErrors((current) => { const next = { ...current }; delete next[product.id]; return next; });
       const stylistRequest = requestStylistComment({ data: { lookImage: result.image, productName: product.name, retailer: product.retailer } })

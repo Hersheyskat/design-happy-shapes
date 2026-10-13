@@ -27,9 +27,51 @@ function catalogImageUrl(imagePath: string) {
 }
 
 export const listCatalogProducts = createServerFn({ method: "GET" }).handler(async (): Promise<CatalogProductDto[]> => {
-  const result = await publicClient().from("catalog_products").select("id, audience, product_name, category, subcategory, retailer, price, currency, image_path, product_url, refreshed_at").eq("is_active", true).eq("availability", "available").order("display_order");
-  if (result.error) throw new Error("The catalogue is temporarily unavailable. Please try again.");
-  return result.data.map((row) => ({ id: row.id, audience: row.audience as "men" | "women", name: row.product_name, category: row.category, subcategory: row.subcategory ?? null, retailer: row.retailer, price: row.price, currency: row.currency, image: catalogImageUrl(row.image_path), productUrl: row.product_url, refreshedAt: row.refreshed_at }));
+  const client = publicClient();
+  const pageSize = 1000;
+  const rows: {
+    id: string;
+    audience: string;
+    product_name: string;
+    category: string;
+    subcategory: string | null;
+    retailer: string;
+    price: number;
+    currency: string;
+    image_path: string;
+    product_url: string;
+    refreshed_at: string;
+  }[] = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const result = await client
+      .from("catalog_products")
+      .select("id, audience, product_name, category, subcategory, retailer, price, currency, image_path, product_url, refreshed_at")
+      .eq("is_active", true)
+      .eq("availability", "available")
+      .order("audience")
+      .order("retailer")
+      .order("display_order")
+      .order("id")
+      .range(from, from + pageSize - 1);
+    if (result.error) throw new Error("The catalogue is temporarily unavailable. Please try again.");
+    rows.push(...result.data);
+    if (result.data.length < pageSize) break;
+  }
+
+  return rows.map((row) => ({
+    id: row.id,
+    audience: row.audience as "men" | "women",
+    name: row.product_name,
+    category: row.category,
+    subcategory: row.subcategory ?? null,
+    retailer: row.retailer,
+    price: row.price,
+    currency: row.currency,
+    image: catalogImageUrl(row.image_path),
+    productUrl: row.product_url,
+    refreshedAt: row.refreshed_at,
+  }));
 });
 
 function publicClient() {

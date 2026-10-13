@@ -6,6 +6,7 @@ import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { ShopLookShell } from "@/components/shoplook-shell";
+import { brandFilterOptions } from "@/lib/brands";
 import { listCatalogProducts } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 
@@ -33,7 +34,7 @@ function ShopPage() {
 
   const audienceProducts = products.filter((product) => product.audience === audience);
   const categories = ["All", ...Array.from(new Set(audienceProducts.map((product) => product.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
-  const draftRetailers = ["All", ...Array.from(new Set(products.filter((product) => product.audience === draftAudience).map((product) => product.retailer).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
+  const draftRetailers = ["All", ...brandFilterOptions(Array.from(new Set(products.filter((product) => product.audience === draftAudience).map((product) => product.retailer).filter(Boolean))), draftAudience, 10)];
   const term = query.trim().toLowerCase();
   const filtered = audienceProducts.filter((product) => {
     if (category !== "All" && product.category !== category) return false;

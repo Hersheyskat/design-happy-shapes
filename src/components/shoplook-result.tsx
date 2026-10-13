@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { brandFilterOptions } from "@/lib/brands";
 import type { CatalogProductDto } from "@/lib/community.types";
 import { StylistChat } from "@/components/stylist-chat";
 
@@ -23,7 +24,7 @@ type Props = {
   commentError?: string | undefined;
   generationError: string;
   comparisonCount: number;
-  brand: (name: string) => string;
+  brand: (name: string, retailer?: string) => string;
   onShare: () => void;
   onSave: () => void;
   onBuy: () => void;
@@ -96,7 +97,7 @@ export function ShopLookResult(props: Props) {
   const normalize = (value: string) => value.toLowerCase().replace(/t[\s-]*shirts?\b/g, "tshirt").replace(/\bshirts\b/g, "shirt").replace(/\bjackets\b/g, "jacket").replace(/\bdresses\b/g, "dress").replace(/\bjeans\b/g, "jean");
   const audienceProducts = props.products.filter((item) => item.audience === audience);
   const categories = ["All", ...Array.from(new Set(audienceProducts.map((item) => item.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
-  const draftRetailers = ["All", ...Array.from(new Set(props.products.filter((item) => item.audience === draftAudience).map((item) => item.retailer).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
+  const draftRetailers = ["All", ...brandFilterOptions(Array.from(new Set(props.products.filter((item) => item.audience === draftAudience).map((item) => item.retailer).filter(Boolean))), draftAudience, 10)];
   const terms = normalize(search).trim().split(/\s+/).filter(Boolean);
   const matchingProducts = audienceProducts.filter((item) => {
     if (category !== "All" && item.category !== category) return false;
@@ -147,7 +148,7 @@ export function ShopLookResult(props: Props) {
 
     <div className="px-5 py-3">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-        <div className="min-w-0"><h1 className="truncate text-sm font-semibold leading-5" title={product.name}>{props.brand(product.name)}</h1><p className="text-[11px] leading-4 text-muted-foreground">{product.retailer}</p></div>
+        <div className="min-w-0"><h1 className="truncate text-sm font-semibold leading-5" title={product.name}>{props.brand(product.name, product.retailer)}</h1><p className="text-[11px] leading-4 text-muted-foreground">{product.retailer}</p></div>
         <p className="shrink-0 text-sm font-semibold leading-5 text-primary">₹{product.price.toLocaleString("en-IN")}</p>
       </div>
       <div className={`mt-2 grid gap-2 ${showCompare ? "grid-cols-3" : "grid-cols-2"}`}>
@@ -226,7 +227,7 @@ export function ShopLookResult(props: Props) {
                   </span>
                 )}
               </span>
-              <span className="w-full truncate pt-2 text-sm font-semibold">{props.brand(item.name)}</span>
+              <span className="w-full truncate pt-2 text-sm font-semibold">{props.brand(item.name, item.retailer)}</span>
               <span className="w-full truncate pt-0.5 text-[11px] text-muted-foreground">{item.retailer}</span>
               <span className="w-full pt-1 text-sm font-semibold">₹{item.price.toLocaleString("en-IN")}</span>
             </Button>

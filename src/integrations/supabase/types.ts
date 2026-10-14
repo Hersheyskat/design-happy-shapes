@@ -826,6 +826,10 @@ export type Database = {
         Args: { _ip_hash: string; _max_count?: number }
         Returns: number
       }
+      guest_look_remaining: {
+        Args: { _ip_hash: string; _max_count?: number }
+        Returns: number
+      }
       release_guest_look_generation: {
         Args: { _ip_hash: string }
         Returns: undefined

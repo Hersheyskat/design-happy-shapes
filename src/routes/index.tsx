@@ -115,6 +115,7 @@ function ShopLook() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
+  const [authReason, setAuthReason] = useState<string | undefined>(undefined);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [savingIds, setSavingIds] = useState<string[]>([]);
   const savingIdsRef = useRef(new Set<string>());
@@ -361,6 +362,54 @@ function ShopLook() {
     }
   }
 
+  function promptSignInForLooks(productId: string, usedFreeLimit: boolean) {
+    setPendingAction({ type: "generate", productId });
+    setAuthReason(
+      usedFreeLimit
+        ? "You've used today's 2 free looks. Sign in with Google or email to keep creating."
+        : "Sign in with Google or an email code to create looks, and to save, share, or shop.",
+    );
+    setGenerationError("");
+    setAuthOpen(true);
+  }
+
+  async function guestLookAccess(token?: string) {
+    try {
+      const response = await fetch("/api/guest-look-status", {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      const result = (await response.json().catch(() => ({}))) as {
+        signedIn?: boolean;
+        remaining?: number | null;
+        requireLogin?: boolean;
+      };
+      if (!response.ok) return { allow: false as const, usedFreeLimit: true };
+      if (result.signedIn) return { allow: true as const, usedFreeLimit: false };
+      if (result.requireLogin || (typeof result.remaining === "number" && result.remaining <= 0)) {
+        return { allow: false as const, usedFreeLimit: true };
+      }
+      return { allow: true as const, usedFreeLimit: false };
+    } catch {
+      return { allow: false as const, usedFreeLimit: false };
+    }
+  }
+
+  async function startCreateLook() {
+    if (!firstProduct || !photoFile) return;
+    await supabase.auth.getUser();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) {
+      const access = await guestLookAccess();
+      if (!access.allow) {
+        promptSignInForLooks(firstProduct.id, access.usedFreeLimit);
+        return;
+      }
+    }
+    setView("try");
+    void generateLook(firstProduct);
+  }
+
   function selectProduct(id: string) {
     const product = products.find((item) => item.id === id);
     if (!product || generating) return;
@@ -375,6 +424,13 @@ function ShopLook() {
     await supabase.auth.getUser();
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
+    if (!token) {
+      const access = await guestLookAccess();
+      if (!access.allow) {
+        promptSignInForLooks(product.id, access.usedFreeLimit);
+        return;
+      }
+    }
     setGenerating(product.id); setGenerationError("");
     try {
       const garmentBlob = await (await fetch(product.image)).blob();
@@ -399,10 +455,8 @@ function ShopLook() {
           model?: string | null;
         };
       };
-      if (response.status === 401 && result.code === "login_required" && !token) {
-        setPendingAction({ type: "generate", productId: product.id });
-        setAuthOpen(true);
-        setGenerationError("Sign in to create more looks.");
+      if (response.status === 401 && result.code === "login_required") {
+        promptSignInForLooks(product.id, !token);
         return;
       }
       if (!response.ok || !result.image) throw new Error(result.message ?? "OpenRouter could not make this look right now.");
@@ -651,7 +705,7 @@ function ShopLook() {
        {selectedProduct && selectedProduct.audience === audience && <div className="mt-4 flex items-center gap-3 rounded-md border border-primary bg-surface p-2"><img src={selectedProduct.image} alt="" className="size-14 rounded-sm object-contain" /><div className="min-w-0"><p className="text-[10px] font-semibold uppercase text-primary">First in your Look queue</p><p className="truncate text-sm font-medium">{selectedProduct.name}</p></div></div>}
       {catalogError && <p role="alert" className="mt-3 text-sm text-destructive">{catalogError}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
-        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => { if (!firstProduct) return; setView("try"); void generateLook(firstProduct); }}>Create your ShopLook <Sparkles /></Button>
+        <Button className="mt-5 h-12 w-full text-base" disabled={!photo || !firstProduct} onClick={() => void startCreateLook()}>Create your ShopLook <Sparkles /></Button>
     </section>}
 
     {view === "try" && active && <ShopLookResult
@@ -691,6 +745,17 @@ function ShopLook() {
     {shareProduct && <div role="dialog" aria-modal="true" aria-label={`Share ${shareProduct.name}`} className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setShareId(null); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">{sharingComparison ? "Share your looks" : "Share your look"}</h2><Button variant="ghost" size="icon" aria-label="Close share options" onClick={() => setShareId(null)}><X /></Button></div><p className="mt-2 text-xs leading-5 text-muted-foreground">Share your look with friends on Insta and WhatsApp for feedback &amp; fun :)</p>{!sharingComparison && lookShareUrl(shareProduct.id) && <p className="mt-3 break-all rounded-md bg-surface px-3 py-2 text-[11px] leading-4 text-muted-foreground">{lookShareUrl(shareProduct.id)}</p>}<div className="mt-5 grid grid-cols-2 gap-2"><Button variant="outline" className="h-12" onClick={() => void shareToInstagram(shareProduct)}><Instagram /> Instagram</Button><Button variant="outline" className="h-12" onClick={() => void shareToWhatsApp(shareProduct)}><MessageCircle /> WhatsApp</Button></div><Button variant="outline" className="mt-2 h-12 w-full" onClick={() => void copyLink()}><LinkIcon /> {sharingComparison ? "Copy app link" : "Copy look link"}</Button>{message && <p role="status" className="mt-3 text-xs text-primary">{message}</p>}</div></div>}
     {shopProduct && <div role="dialog" aria-modal="true" aria-label="Thank you for using ShopLook" className="fixed inset-0 z-50 flex items-end justify-center bg-scrim" onMouseDown={(event) => { if (event.target === event.currentTarget) setShopId(null); }}><div className="w-full max-w-[430px] rounded-t-lg bg-background p-5 shadow-sheet"><div className="flex items-center justify-between"><h2 className="font-display text-2xl">Thank you</h2><Button variant="ghost" size="icon" aria-label="Close" onClick={() => setShopId(null)}><X /></Button></div><p className="mt-3 text-sm leading-6 text-muted-foreground">Thank you for using ShopLook. We&apos;ll take you to the retailer to continue shopping.</p><Button className="mt-5 h-12 w-full" onClick={() => continueToShop(shopProduct)}><ShoppingBag /> Continue to {shopProduct.retailer}</Button><Button variant="outline" className="mt-2 h-11 w-full" onClick={() => setShopId(null)}>Stay on ShopLook</Button></div></div>}
     {message && !shareProduct && !shopProduct && <p role="status" className="fixed inset-x-4 bottom-20 z-40 mx-auto max-w-sm rounded-md bg-overlay px-4 py-3 text-center text-sm text-overlay-foreground shadow-float">{message}</p>}
-    <AuthDialog open={authOpen} onOpenChange={(open) => { setAuthOpen(open); if (!open) setPendingAction(null); }} onSignedIn={continuePendingAction} />
+    <AuthDialog
+      open={authOpen}
+      description={authReason}
+      onOpenChange={(open) => {
+        setAuthOpen(open);
+        if (!open) {
+          setPendingAction(null);
+          setAuthReason(undefined);
+        }
+      }}
+      onSignedIn={continuePendingAction}
+    />
   </ShopLookShell>;
 }

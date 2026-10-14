@@ -8,7 +8,17 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureMyProfile, saveMyName } from "@/lib/community.functions";
 
-export function AuthDialog({ open, onOpenChange, onSignedIn }: { open: boolean; onOpenChange: (open: boolean) => void; onSignedIn?: () => void }) {
+export function AuthDialog({
+  open,
+  onOpenChange,
+  onSignedIn,
+  description,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSignedIn?: () => void;
+  description?: string;
+}) {
   const loadProfile = useServerFn(ensureMyProfile);
   const persistName = useServerFn(saveMyName);
   const [busy, setBusy] = useState(false);
@@ -145,7 +155,8 @@ export function AuthDialog({ open, onOpenChange, onSignedIn }: { open: boolean; 
           <DialogDescription>
             {step === "name"
               ? "Add your first name and surname so your profile belongs to you. You can edit this later."
-              : "Sign in with Google or an email code to keep creating looks, and to save, share, or shop. Your profile is created automatically."}
+              : description ||
+                "Sign in with Google or an email code to keep creating looks, and to save, share, or shop. Your profile is created automatically."}
           </DialogDescription>
         </DialogHeader>
         {step === "name" ? (

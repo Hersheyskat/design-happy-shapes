@@ -17,6 +17,7 @@ import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as WardrobeRouteImport } from './routes/wardrobe'
 import { Route as ApiGenerateLookRouteImport } from './routes/api/generate-look'
+import { Route as ApiGuestLookStatusRouteImport } from './routes/api/guest-look-status'
 import { Route as ApiStylistChatRouteImport } from './routes/api/stylist-chat'
 import { Route as ApiSuggestCatalogRouteImport } from './routes/api/suggest-catalog'
 import { Route as ApiWardrobeLookRouteImport } from './routes/api/wardrobe-look'
@@ -64,6 +65,11 @@ const WardrobeRoute = WardrobeRouteImport.update({
 const ApiGenerateLookRoute = ApiGenerateLookRouteImport.update({
   id: '/api/generate-look',
   path: '/api/generate-look',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGuestLookStatusRoute = ApiGuestLookStatusRouteImport.update({
+  id: '/api/guest-look-status',
+  path: '/api/guest-look-status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiStylistChatRoute = ApiStylistChatRouteImport.update({
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/saved': typeof SavedRoute
   '/wardrobe': typeof WardrobeRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
+  '/api/guest-look-status': typeof ApiGuestLookStatusRoute
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/api/wardrobe-look': typeof ApiWardrobeLookRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/saved': typeof SavedRoute
   '/wardrobe': typeof WardrobeRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
+  '/api/guest-look-status': typeof ApiGuestLookStatusRoute
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/api/wardrobe-look': typeof ApiWardrobeLookRoute
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   '/saved': typeof SavedRoute
   '/wardrobe': typeof WardrobeRoute
   '/api/generate-look': typeof ApiGenerateLookRoute
+  '/api/guest-look-status': typeof ApiGuestLookStatusRoute
   '/api/stylist-chat': typeof ApiStylistChatRoute
   '/api/suggest-catalog': typeof ApiSuggestCatalogRoute
   '/api/wardrobe-look': typeof ApiWardrobeLookRoute
@@ -173,6 +182,7 @@ export interface FileRouteTypes {
     | '/saved'
     | '/wardrobe'
     | '/api/generate-look'
+    | '/api/guest-look-status'
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/api/wardrobe-look'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/saved'
     | '/wardrobe'
     | '/api/generate-look'
+    | '/api/guest-look-status'
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/api/wardrobe-look'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/saved'
     | '/wardrobe'
     | '/api/generate-look'
+    | '/api/guest-look-status'
     | '/api/stylist-chat'
     | '/api/suggest-catalog'
     | '/api/wardrobe-look'
@@ -228,6 +240,7 @@ export interface RootRouteChildren {
   SavedRoute: typeof SavedRoute
   WardrobeRoute: typeof WardrobeRoute
   ApiGenerateLookRoute: typeof ApiGenerateLookRoute
+  ApiGuestLookStatusRoute: typeof ApiGuestLookStatusRoute
   ApiStylistChatRoute: typeof ApiStylistChatRoute
   ApiSuggestCatalogRoute: typeof ApiSuggestCatalogRoute
   ApiWardrobeLookRoute: typeof ApiWardrobeLookRoute
@@ -293,6 +306,13 @@ declare module '@tanstack/react-router' {
       path: '/api/generate-look'
       fullPath: '/api/generate-look'
       preLoaderRoute: typeof ApiGenerateLookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/guest-look-status': {
+      id: '/api/guest-look-status'
+      path: '/api/guest-look-status'
+      fullPath: '/api/guest-look-status'
+      preLoaderRoute: typeof ApiGuestLookStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/stylist-chat': {
@@ -374,6 +394,7 @@ const rootRouteChildren: RootRouteChildren = {
   SavedRoute: SavedRoute,
   WardrobeRoute: WardrobeRoute,
   ApiGenerateLookRoute: ApiGenerateLookRoute,
+  ApiGuestLookStatusRoute: ApiGuestLookStatusRoute,
   ApiStylistChatRoute: ApiStylistChatRoute,
   ApiSuggestCatalogRoute: ApiSuggestCatalogRoute,
   ApiWardrobeLookRoute: ApiWardrobeLookRoute,

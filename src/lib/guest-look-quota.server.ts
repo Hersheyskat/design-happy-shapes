@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-const FREE_LOOKS = 2;
+export const FREE_LOOKS = 2;
 
 export function clientIpHash(request: Request) {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -13,6 +13,13 @@ export async function claimGuestLook(ipHash: string) {
   const claimed = await supabaseAdmin.rpc("claim_guest_look_generation", { _ip_hash: ipHash, _max_count: FREE_LOOKS });
   if (claimed.error) throw claimed.error;
   return typeof claimed.data === "number" ? claimed.data : -1;
+}
+
+export async function peekGuestLookRemaining(ipHash: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const remaining = await supabaseAdmin.rpc("guest_look_remaining", { _ip_hash: ipHash, _max_count: FREE_LOOKS });
+  if (remaining.error) throw remaining.error;
+  return typeof remaining.data === "number" ? remaining.data : 0;
 }
 
 export async function releaseGuestLook(ipHash: string) {

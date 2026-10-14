@@ -110,9 +110,10 @@ export const Route = createFileRoute("/api/generate-look")({
         // Guests must always go through IP quota. Never generate without it.
         if (!userId) {
           if (!hasAdmin) {
+            // Without quota infra, require sign-in instead of an opaque error.
             return Response.json(
-              { message: "AI looks are temporarily unavailable. Please try again shortly." },
-              { status: 503 },
+              { message: "Sign in to create looks.", code: "login_required" },
+              { status: 401 },
             );
           }
           try {
@@ -125,8 +126,8 @@ export const Route = createFileRoute("/api/generate-look")({
             claimedGuest = true;
           } catch {
             return Response.json(
-              { message: "AI looks are temporarily unavailable. Please try again shortly." },
-              { status: 503 },
+              { message: "Sign in to create looks.", code: "login_required" },
+              { status: 401 },
             );
           }
         }

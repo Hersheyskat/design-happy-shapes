@@ -46,12 +46,12 @@ export const listCatalogProducts = createServerFn({ method: "GET" }).handler(asy
   for (let from = 0; ; from += pageSize) {
     const result = await client
       .from("catalog_products")
-      .select("id, audience, product_name, category, subcategory, retailer, price, currency, image_path, product_url, refreshed_at")
+      .select("id, audience, product_name, category, subcategory, retailer, price, currency, image_path, product_url, refreshed_at, display_order, created_at")
       .eq("is_active", true)
       .eq("availability", "available")
       .order("audience")
-      .order("retailer")
       .order("display_order")
+      .order("created_at", { ascending: false })
       .order("id")
       .range(from, from + pageSize - 1);
     if (result.error) throw new Error("The catalogue is temporarily unavailable. Please try again.");

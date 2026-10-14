@@ -6,7 +6,7 @@ import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { ShopLookShell } from "@/components/shoplook-shell";
-import { brandFilterOptions, storeLabelFromUrl } from "@/lib/brands";
+import { brandFilterOptions, sortCategoryNames, storeLabelFromUrl } from "@/lib/brands";
 import { listCatalogProducts } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 
@@ -39,7 +39,7 @@ function ShopPage() {
     if (retailer !== "All" && product.retailer !== retailer) return false;
     return !term || `${product.name} ${product.retailer} ${product.category} ${product.subcategory ?? ""}`.toLowerCase().includes(term);
   });
-  const categories = ["All", ...Array.from(new Set(scopedProducts.map((product) => product.category).filter(Boolean))).sort((a, b) => a.localeCompare(b))];
+  const categories = ["All", ...sortCategoryNames(Array.from(new Set(scopedProducts.map((product) => product.category).filter(Boolean))), audience)];
   const activeCategory = category !== "All" && !categories.includes(category) ? "All" : category;
   const filtered = scopedProducts.filter((product) => activeCategory === "All" || product.category === activeCategory);
   const filterCount = (retailer !== "All" ? 1 : 0);

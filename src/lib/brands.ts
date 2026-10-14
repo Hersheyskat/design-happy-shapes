@@ -99,6 +99,22 @@ export function sortBrandNames(names: string[], audience: "women" | "men"): stri
   });
 }
 
+/** Women category tabs: Dresses and Tops first, then alphabetical. */
+const WOMEN_CATEGORY_ORDER = ["Dresses", "Tops"] as const;
+
+export function sortCategoryNames(names: string[], audience: "women" | "men"): string[] {
+  if (audience !== "women") return [...names].sort((a, b) => a.localeCompare(b));
+  const rank = new Map(WOMEN_CATEGORY_ORDER.map((name, index) => [name.toLowerCase(), index]));
+  return [...names].sort((a, b) => {
+    const ra = rank.get(a.toLowerCase());
+    const rb = rank.get(b.toLowerCase());
+    if (ra != null && rb != null) return ra - rb;
+    if (ra != null) return -1;
+    if (rb != null) return 1;
+    return a.localeCompare(b);
+  });
+}
+
 /**
  * Brand chips for the shopper filter: every retailer that currently has
  * available catalogue products for the audience, sorted by curated order.

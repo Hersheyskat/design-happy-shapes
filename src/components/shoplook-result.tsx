@@ -74,18 +74,13 @@ export function ShopLookResult(props: Props) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [draftAudience, setDraftAudience] = useState<"women" | "men">(props.product.audience);
   const [draftRetailer, setDraftRetailer] = useState("All");
-  const [stylistOpen, setStylistOpen] = useState(false);
   const [stylistPinned, setStylistPinned] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const stylistAvailable = props.completed && !props.generating && Boolean(props.comment || props.commentLoading || props.commentError);
   const stylistKey = stylistAvailable ? `${props.product.id}:${props.imageUrl}:${props.comment ?? ""}:${props.commentLoading ? "loading" : props.commentError ? "error" : "ready"}` : "";
   useEffect(() => {
     setStylistPinned(false);
-    setStylistOpen(Boolean(stylistKey));
-    if (!stylistKey || props.commentLoading) return;
-    const timer = window.setTimeout(() => setStylistOpen(false), 3000);
-    return () => window.clearTimeout(timer);
-  }, [stylistKey, props.commentLoading]);
+  }, [props.product.id, props.imageUrl]);
   useEffect(() => {
     setAudience(props.product.audience);
     setCategory("All");
@@ -142,12 +137,12 @@ export function ShopLookResult(props: Props) {
       <Button variant="ghost" size="icon" className={`absolute right-3 z-10 size-9 rounded-full bg-overlay text-overlay-foreground hover:bg-overlay hover:text-overlay-foreground ${generating ? "top-14" : "top-3"}`} aria-label="Share your look" title="Share your look" disabled={!completed || sharing} onClick={props.onShare}>{sharing ? <LoaderCircle className="size-4 animate-spin" /> : <Share2 className="size-4" />}</Button>
       {generating && <div role="status" className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 bg-overlay px-5 py-3 text-sm text-overlay-foreground"><LoaderCircle className="size-4 animate-spin" /> Creating Your ShopLook…</div>}
       {stylistKey && <>
-        <div id="shoplook-stylist-take" aria-live="polite" className={`absolute inset-x-3 bottom-14 z-10 origin-bottom-right rounded-md border border-border bg-card/95 p-3 text-card-foreground shadow-float backdrop-blur-sm motion-safe:transition-all motion-safe:duration-300 ${stylistOpen || stylistPinned ? "visible translate-y-0 opacity-100" : "invisible pointer-events-none translate-y-2 opacity-0"}`}>
-          <div className="mb-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"><h2 className="flex min-w-0 items-center gap-2 text-xs font-semibold text-primary"><Sparkles className="size-4 shrink-0" /> Stylist’s take</h2><Button variant="ghost" size="icon" className="size-7" aria-label="Close stylist’s take" onClick={() => { setStylistOpen(false); setStylistPinned(false); }}><X className="size-3" /></Button></div>
+        <div id="shoplook-stylist-take" aria-live="polite" className={`absolute inset-x-3 bottom-14 z-10 origin-bottom-right rounded-md border border-border bg-card/95 p-3 text-card-foreground shadow-float backdrop-blur-sm motion-safe:transition-all motion-safe:duration-300 ${stylistPinned ? "visible translate-y-0 opacity-100" : "invisible pointer-events-none translate-y-2 opacity-0"}`}>
+          <div className="mb-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2"><h2 className="flex min-w-0 items-center gap-2 text-xs font-semibold text-primary"><Sparkles className="size-4 shrink-0" /> Stylist’s take</h2><Button variant="ghost" size="icon" className="size-7" aria-label="Close stylist’s take" onClick={() => setStylistPinned(false)}><X className="size-3" /></Button></div>
           {props.commentLoading && !props.comment ? <p className="flex items-center gap-2 text-sm leading-5 text-muted-foreground"><LoaderCircle className="size-3.5 shrink-0 animate-spin" /> Reviewing your look…</p> : <p className="text-sm leading-5">{props.comment ?? props.commentError}</p>}
           {Boolean(props.comment) && <Button variant="link" className="mt-1 h-7 px-0 text-xs" onClick={() => { setStylistPinned(true); setChatOpen(true); }}>Ask your stylist <ArrowRight className="size-3" /></Button>}
         </div>
-        {!(stylistOpen || stylistPinned) && <Button variant="ghost" size="icon" className="absolute bottom-14 right-3 z-10 size-9 rounded-full bg-overlay text-overlay-foreground hover:bg-overlay hover:text-overlay-foreground" aria-label="Read stylist’s take" title="Stylist’s take" aria-controls="shoplook-stylist-take" aria-expanded={false} onClick={() => setStylistPinned(true)}><Sparkles className="size-4" /></Button>}
+        {!stylistPinned && <Button variant="ghost" size="icon" className="absolute bottom-14 right-3 z-10 size-9 rounded-full bg-overlay text-overlay-foreground hover:bg-overlay hover:text-overlay-foreground" aria-label="Read stylist’s take" title="Stylist’s take" aria-controls="shoplook-stylist-take" aria-expanded={false} onClick={() => setStylistPinned(true)}><Sparkles className="size-4" /></Button>}
       </>}
     </div>
 

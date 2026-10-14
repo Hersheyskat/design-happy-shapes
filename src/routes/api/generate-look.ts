@@ -107,9 +107,16 @@ export const Route = createFileRoute("/api/generate-look")({
         const ipHash = userId ? null : clientIpHash(request);
         const hasAdmin = Boolean(process.env["SUPABASE_SERVICE_ROLE_KEY"]);
         let claimedGuest = false;
-        if (ipHash && hasAdmin) {
+        // Guests must always go through IP quota. Never generate without it.
+        if (!userId) {
+          if (!hasAdmin) {
+            return Response.json(
+              { message: "AI looks are temporarily unavailable. Please try again shortly." },
+              { status: 503 },
+            );
+          }
           try {
-            const remaining = await claimGuestLook(ipHash);
+            const remaining = await claimGuestLook(ipHash!);
             if (remaining < 0)
               return Response.json(
                 { message: "Sign in to create more looks.", code: "login_required" },

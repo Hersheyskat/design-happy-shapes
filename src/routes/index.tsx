@@ -13,7 +13,7 @@ import { ensureLookShareSlug, listCatalogProducts, saveMyLook } from "@/lib/comm
 import type { CatalogProductDto } from "@/lib/community.types";
 import { recordShopperEvent } from "@/lib/shopper-events.functions";
 import { analyseGeneratedLook } from "@/lib/stylist-comment.functions";
-import { distinctSecondaryLabel } from "@/lib/brands";
+import { storeLabelFromUrl } from "@/lib/brands";
 type Product = CatalogProductDto;
 type PendingAction = { type: "generate" | "favorite" | "share" | "shareComparison" | "buy"; productId: string };
 
@@ -43,18 +43,6 @@ function productMeta(product: Product) {
     currency: product.currency,
     product_url: product.productUrl,
   };
-}
-
-function productBrand(name: string, retailer?: string) {
-  const fromRetailer = retailer?.trim();
-  if (fromRetailer && !["Myntra", "AJIO", "Amazon India"].includes(fromRetailer)) return fromRetailer;
-  const brands = [
-    "Symbol Premium", "SMOWKLY", "DEELMO", "INKAST", "AD by Arvind", "BASICS", "Thomas Scott",
-    "FableStreet", "SaintX", "Cottinfab", "U.S. Polo ASSN.", "ROCKSY", "KLOSIA", "Stylum", "Myx",
-    "Calvin Klein", "CK", "Louis Philippe", "USPA", "Levi's", "SHEIN", "Moomaya",
-  ];
-  const withoutRetailerPrefix = name.replace(/^Amazon Brand\s*[-–]\s*/i, "");
-  return brands.find((brand) => withoutRetailerPrefix.toLowerCase().startsWith(brand.toLowerCase())) ?? "Brand not listed";
 }
 
 function PreviewPhoto({ src, alt, contain = false }: { src: string; alt: string; contain?: boolean }) {
@@ -725,7 +713,6 @@ function ShopLook() {
       commentError={stylistErrors[active.id]}
       generationError={generationError}
       comparisonCount={comparison.length}
-      brand={productBrand}
       onShare={() => void openShare(active)}
       onSave={() => void favoriteLook(active)}
       onBuy={() => void openShop(active)}
@@ -735,9 +722,8 @@ function ShopLook() {
 
     {view === "compare" && <section className="px-4 pb-12 pt-6"><p className="px-1 text-xs font-semibold uppercase tracking-widest text-primary">The shortlist</p><div className="flex items-center justify-between gap-2"><h1 className="mt-1 px-1 font-display text-4xl">Compare your looks</h1><Button variant="ghost" size="icon" className="shrink-0" aria-label="Share all looks" title="Share all looks" disabled={!comparison.length} onClick={() => void openComparisonShare()}><Share2 /></Button></div><p className="mt-2 px-1 text-sm text-muted-foreground">{comparison.length} favorites · scroll for more</p>
          <div className="mt-5 grid grid-cols-2 gap-x-2 gap-y-7">{comparison.map((product) => {
-           const brand = productBrand(product.name, product.retailer);
-           const subtitle = distinctSecondaryLabel(brand, product.retailer, product.name);
-           return <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} comparison /><div className="flex min-h-14 items-center justify-between gap-1 py-2"><div className="min-w-0"><h2 className="truncate font-display text-lg">{brand}</h2><p className="truncate text-xs text-muted-foreground">{subtitle ? `${subtitle} · ` : ""}₹{product.price.toLocaleString("en-IN")}</p></div><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} title="Remove from comparison" onClick={() => void favoriteLook(product)}><Heart className="fill-primary text-primary" /></Button></div><div className="flex items-center justify-center gap-3"><Button className="h-10 w-full text-sm" aria-label={`${product.productUrl ? "Buy" : "Search for"} ${product.name}`} onClick={() => void openShop(product)}><ShoppingBag className="size-4" /> {product.productUrl ? "Buy" : "Search"}</Button></div></article>;
+           const store = storeLabelFromUrl(product.productUrl);
+           return <article key={product.id} className="min-w-0"><LookImage person={person} product={product} generated={generated[product.id]} comparison /><div className="flex min-h-14 items-center justify-between gap-1 py-2"><div className="min-w-0"><h2 className="truncate font-display text-lg" title={product.name}>{product.name}</h2><p className="truncate text-xs text-muted-foreground">{store ? `${store} · ` : ""}₹{product.price.toLocaleString("en-IN")}</p></div><Button variant="ghost" size="icon" className="size-9 shrink-0" aria-label={`Remove ${product.name} from comparison`} title="Remove from comparison" onClick={() => void favoriteLook(product)}><Heart className="fill-primary text-primary" /></Button></div><div className="flex items-center justify-center gap-3"><Button className="h-10 w-full text-sm" aria-label={`${product.productUrl ? "Buy" : "Search for"} ${product.name}`} onClick={() => void openShop(product)}><ShoppingBag className="size-4" /> {product.productUrl ? "Buy" : "Search"}</Button></div></article>;
          })}</div>
         {comparison.length === 0 && <div className="py-16 text-center"><Heart className="mx-auto mb-3 size-7 text-primary" /><p className="text-sm text-muted-foreground">Your shortlist is empty. Generate a look and heart it to compare here.</p></div>}
          <Button variant="outline" className="mt-8 h-11 w-full" onClick={() => setView("try")}>Try more apparel</Button><p className="mt-4 text-center text-[11px] text-muted-foreground">AI visualizations are not fit guarantees · retailer links are for discovery · no partnership implied</p>

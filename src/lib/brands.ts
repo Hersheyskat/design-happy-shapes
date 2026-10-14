@@ -1,11 +1,28 @@
-/** Prefer a secondary label that isn't the same as the primary (case-insensitive). */
-export function distinctSecondaryLabel(primary: string, secondary: string, fallback = "") {
-  const primaryKey = primary.trim().toLowerCase();
-  const secondaryText = secondary.trim();
-  if (secondaryText && secondaryText.toLowerCase() !== primaryKey) return secondaryText;
-  const fallbackText = fallback.trim();
-  if (fallbackText && fallbackText.toLowerCase() !== primaryKey) return fallbackText;
-  return "";
+const STORE_HOST_LABELS: Record<string, string> = {
+  "myntra.com": "Myntra",
+  "ajio.com": "AJIO",
+  "amazon.in": "Amazon India",
+  "amzn.in": "Amazon India",
+  "amazon.com": "Amazon",
+  "flipkart.com": "Flipkart",
+  "nykaafashion.com": "Nykaa Fashion",
+  "tatacliq.com": "Tata CLiQ",
+  "reliancetrends.com": "Reliance Trends",
+  "fablestreet.com": "FableStreet",
+};
+
+/** E-commerce store label from a catalogue product URL (not brand/retailer). */
+export function storeLabelFromUrl(url: string | null | undefined) {
+  if (!url?.trim()) return "";
+  try {
+    const host = new URL(url).hostname.replace(/^www\./i, "").toLowerCase();
+    if (STORE_HOST_LABELS[host]) return STORE_HOST_LABELS[host];
+    const leaf = host.split(".")[0]?.trim();
+    if (!leaf) return "";
+    return leaf.charAt(0).toUpperCase() + leaf.slice(1);
+  } catch {
+    return "";
+  }
 }
 
 /** Curated brand display order for shopper Brand filters (matches admin allowlist). */
@@ -29,9 +46,13 @@ export const WOMEN_BRAND_ORDER = [
   "Prada",
   "Saint Laurent",
   "Ralph Lauren",
+  "Michael Kors",
   "Balenciaga",
   "Uniqlo",
   "H&M",
+  "Forever New",
+  "Pretty Pixie",
+  "FableStreet",
   "Levi's",
   "Tommy Hilfiger",
   "Calvin Klein",
@@ -57,7 +78,6 @@ export const MEN_BRAND_ORDER = [
   "Tommy Hilfiger",
   "U.S. Polo Assn.",
   "Jack & Jones",
-  "Ralph Lauren",
   "Calvin Klein",
   "Louis Vuitton",
   "Gucci",

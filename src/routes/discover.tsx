@@ -6,7 +6,7 @@ import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { ShopLookShell } from "@/components/shoplook-shell";
-import { brandFilterOptions, distinctSecondaryLabel } from "@/lib/brands";
+import { brandFilterOptions, storeLabelFromUrl } from "@/lib/brands";
 import { listCatalogProducts } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 
@@ -111,7 +111,7 @@ function ShopPage() {
       {!loading && !error && filtered.length > 0 && (
         <div className="mt-5 grid grid-cols-2 gap-3">
           {filtered.map((product) => {
-            const retailerLabel = distinctSecondaryLabel(product.name, product.retailer);
+            const store = storeLabelFromUrl(product.productUrl);
             return (
             <Button key={product.id} asChild variant="ghost" className="h-auto min-w-0 flex-col items-stretch justify-start gap-0 overflow-hidden rounded-md p-0 text-left hover:bg-transparent">
               <Link to="/" search={{ product: product.id }} aria-label={`Try ${product.name} in Look`}>
@@ -123,7 +123,7 @@ function ShopPage() {
                   </span>
                 </span>
                 <span className="block w-full truncate pt-3 text-sm font-semibold">{product.name}</span>
-                {retailerLabel ? <span className="block w-full truncate pt-1 text-xs text-muted-foreground">{retailerLabel}</span> : null}
+                {store ? <span className="block w-full truncate pt-1 text-xs text-muted-foreground">{store}</span> : null}
                 <span className="block w-full pt-1 text-sm">₹{product.price.toLocaleString("en-IN")}</span>
               </Link>
             </Button>

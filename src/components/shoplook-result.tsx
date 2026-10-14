@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import { brandFilterOptions } from "@/lib/brands";
+import { brandFilterOptions, distinctSecondaryLabel } from "@/lib/brands";
 import type { CatalogProductDto } from "@/lib/community.types";
 import { StylistChat } from "@/components/stylist-chat";
 
@@ -112,6 +112,8 @@ export function ShopLookResult(props: Props) {
     if (category !== activeCategory) setCategory(activeCategory);
   }, [category, activeCategory]);
   const { product, completed, generating, selected, saving } = props;
+  const brand = props.brand(product.name, product.retailer);
+  const subtitle = distinctSecondaryLabel(brand, product.retailer, product.name);
   const sharing = Boolean(props.sharing);
   const showCompare = saving || props.comparisonCount > 0;
 
@@ -153,7 +155,10 @@ export function ShopLookResult(props: Props) {
 
     <div className="px-5 py-3">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-        <div className="min-w-0"><h1 className="truncate text-sm font-semibold leading-5" title={product.name}>{props.brand(product.name, product.retailer)}</h1><p className="text-[11px] leading-4 text-muted-foreground">{product.retailer}</p></div>
+        <div className="min-w-0">
+          <h1 className="truncate text-sm font-semibold leading-5" title={product.name}>{brand}</h1>
+          {subtitle ? <p className="truncate text-[11px] leading-4 text-muted-foreground" title={subtitle}>{subtitle}</p> : null}
+        </div>
         <p className="shrink-0 text-sm font-semibold leading-5 text-primary">₹{product.price.toLocaleString("en-IN")}</p>
       </div>
       <div className={`mt-2 grid gap-2 ${showCompare ? "grid-cols-3" : "grid-cols-2"}`}>
@@ -232,8 +237,14 @@ export function ShopLookResult(props: Props) {
                   </span>
                 )}
               </span>
-              <span className="w-full truncate pt-2 text-sm font-semibold">{props.brand(item.name, item.retailer)}</span>
-              <span className="w-full truncate pt-0.5 text-[11px] text-muted-foreground">{item.retailer}</span>
+              {(() => {
+                const itemBrand = props.brand(item.name, item.retailer);
+                const itemSubtitle = distinctSecondaryLabel(itemBrand, item.retailer, item.name);
+                return <>
+                  <span className="w-full truncate pt-2 text-sm font-semibold">{itemBrand}</span>
+                  {itemSubtitle ? <span className="w-full truncate pt-0.5 text-[11px] text-muted-foreground">{itemSubtitle}</span> : null}
+                </>;
+              })()}
               <span className="w-full pt-1 text-sm font-semibold">₹{item.price.toLocaleString("en-IN")}</span>
             </Button>
           );

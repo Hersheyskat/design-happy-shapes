@@ -1,3 +1,13 @@
+/** Prefer a secondary label that isn't the same as the primary (case-insensitive). */
+export function distinctSecondaryLabel(primary: string, secondary: string, fallback = "") {
+  const primaryKey = primary.trim().toLowerCase();
+  const secondaryText = secondary.trim();
+  if (secondaryText && secondaryText.toLowerCase() !== primaryKey) return secondaryText;
+  const fallbackText = fallback.trim();
+  if (fallbackText && fallbackText.toLowerCase() !== primaryKey) return fallbackText;
+  return "";
+}
+
 /** Curated brand display order for shopper Brand filters (matches admin allowlist). */
 
 export const WOMEN_BRAND_ORDER = [

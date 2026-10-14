@@ -129,10 +129,18 @@ function WardrobePage() {
           const path = `${userData.user.id}/generations/${crypto.randomUUID()}.${ext}`;
           const uploaded = await supabase.storage.from("shoplook-media").upload(path, blob, { contentType: blob.type || "image/png" });
           if (uploaded.error) return;
+          let inputImagePath: string | null = null;
+          if (avatar) {
+            const inputExt = avatar.file.type === "image/webp" ? "webp" : avatar.file.type === "image/jpeg" ? "jpg" : "png";
+            const inputPath = `${userData.user.id}/inputs/${crypto.randomUUID()}.${inputExt}`;
+            const inputUpload = await supabase.storage.from("shoplook-media").upload(inputPath, avatar.file, { contentType: avatar.file.type || "image/jpeg" });
+            if (!inputUpload.error) inputImagePath = inputPath;
+          }
           await trackEvent({
             data: {
               eventType: "look_created",
               lookImagePath: path,
+              inputImagePath,
               catalogProductId: productId,
               metadata: {
                 product_name: outfit.title,

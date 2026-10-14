@@ -220,14 +220,35 @@ OUTPUT: A single unified, realistic image of the shopper in a thoughtfully style
             has_admin: hasAdmin,
           });
           let lookImagePath: string | null = null;
+          let inputImagePath: string | null = null;
           let eventLogged = false;
           if (supabaseAdmin) {
+            const guestFolder = userId ? null : crypto.randomUUID();
+            const ownerPrefix = userId ?? `guest/${guestFolder}`;
+            const personExt =
+              person.type === "image/jpeg" ? "jpg" : person.type === "image/webp" ? "webp" : "png";
+            try {
+              const inputPath = `${ownerPrefix}/inputs/${crypto.randomUUID()}.${personExt}`;
+              const inputUpload = await supabaseAdmin.storage
+                .from("shoplook-media")
+                .upload(inputPath, Buffer.from(personData, "base64"), {
+                  contentType: person.type,
+                  upsert: false,
+                });
+              if (inputUpload.error) {
+                console.error("[shoplook] input image upload failed", inputUpload.error.message);
+              } else {
+                inputImagePath = inputPath;
+              }
+            } catch (error) {
+              console.error(
+                "[shoplook] input image upload failed",
+                error instanceof Error ? error.message : error,
+              );
+            }
             try {
               const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
-              const folder = userId
-                ? `${userId}/generations`
-                : `guest/${crypto.randomUUID()}/generations`;
-              const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+              const path = `${ownerPrefix}/generations/${crypto.randomUUID()}.${ext}`;
               const upload = await supabaseAdmin.storage
                 .from("shoplook-media")
                 .upload(path, Buffer.from(image.b64_json, "base64"), {
@@ -252,6 +273,7 @@ OUTPUT: A single unified, realistic image of the shopper in a thoughtfully style
               user_id: userId,
               catalog_product_id: catalogProductId,
               look_image_path: lookImagePath,
+              input_image_path: inputImagePath,
               metadata: {
                 product_name: productName,
                 retailer,
@@ -273,6 +295,7 @@ OUTPUT: A single unified, realistic image of the shopper in a thoughtfully style
             {
               image: `data:${mime};base64,${image.b64_json}`,
               lookImagePath,
+              inputImagePath,
               eventLogged,
               // Always return usage so the signed-in client fallback can persist cost
               // when the service-role server insert is unavailable.

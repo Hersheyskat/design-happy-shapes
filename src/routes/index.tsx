@@ -389,6 +389,7 @@ function ShopLook() {
         message?: string;
         code?: string;
         lookImagePath?: string | null;
+        inputImagePath?: string | null;
         eventLogged?: boolean;
         openrouter?: {
           cost_usd?: number | null;
@@ -426,11 +427,21 @@ function ShopLook() {
               if (uploaded.error) return;
               lookImagePath = path;
             }
+            let inputImagePath = result.inputImagePath ?? null;
+            if (!inputImagePath || !inputImagePath.startsWith(`${userData.user.id}/`)) {
+              const ext = photoFile.type === "image/webp" ? "webp" : photoFile.type === "image/jpeg" ? "jpg" : "png";
+              const path = `${userData.user.id}/inputs/${crypto.randomUUID()}.${ext}`;
+              const uploaded = await supabase.storage.from("shoplook-media").upload(path, photoFile, {
+                contentType: photoFile.type || "image/jpeg",
+              });
+              if (!uploaded.error) inputImagePath = path;
+            }
             const openrouter = result.openrouter;
             await trackEvent({
               data: {
                 eventType: "look_created",
                 lookImagePath,
+                inputImagePath,
                 catalogProductId: product.id,
                 metadata: {
                   ...productMeta(product),

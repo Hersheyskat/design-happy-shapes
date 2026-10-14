@@ -562,6 +562,7 @@ export type Database = {
           created_at: string
           event_type: string
           id: string
+          input_image_path: string | null
           look_image_path: string | null
           metadata: Json
           saved_look_id: string | null
@@ -574,6 +575,7 @@ export type Database = {
           created_at?: string
           event_type: string
           id?: string
+          input_image_path?: string | null
           look_image_path?: string | null
           metadata?: Json
           saved_look_id?: string | null
@@ -586,6 +588,7 @@ export type Database = {
           created_at?: string
           event_type?: string
           id?: string
+          input_image_path?: string | null
           look_image_path?: string | null
           metadata?: Json
           saved_look_id?: string | null

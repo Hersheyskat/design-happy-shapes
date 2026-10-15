@@ -14,6 +14,7 @@ import type { CatalogProductDto } from "@/lib/community.types";
 import { recordShopperEvent } from "@/lib/shopper-events.functions";
 import { analyseGeneratedLook } from "@/lib/stylist-comment.functions";
 import { sortProductsByBrand } from "@/lib/brands";
+import { catalogGarmentFile } from "@/lib/catalog-garment";
 type Product = CatalogProductDto;
 type PendingAction = { type: "generate" | "favorite" | "share" | "shareComparison" | "buy"; productId: string };
 
@@ -421,8 +422,7 @@ function ShopLook() {
     }
     setGenerating(product.id); setGenerationError("");
     try {
-      const garmentBlob = await (await fetch(product.image)).blob();
-      const garment = new File([garmentBlob], `${product.id}.${garmentBlob.type === "image/webp" ? "webp" : "jpg"}`, { type: garmentBlob.type });
+      const garment = await catalogGarmentFile(product.image, product.id);
       const form = new FormData();
       form.append("person", photoFile); form.append("garment", garment); form.append("note", "");
       form.append("catalogProductId", product.id); form.append("productName", product.name); form.append("retailer", product.retailer); form.append("audience", product.audience); form.append("price", String(product.price));

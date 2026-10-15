@@ -1,11 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHash } from "node:crypto";
 
+import { catalogGarmentFromProductId } from "@/lib/catalog-garment.server";
 import { claimGuestLook, clientIpHash, releaseGuestLook } from "@/lib/guest-look-quota.server";
+import { normalizeImageMime, sniffImageMime } from "@/lib/image-mime";
 import { openRouterApiKey, openRouterClientError, openRouterPost } from "@/lib/openrouter.server";
 
 const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUploadFile(value: FormDataEntryValue | null | undefined): value is File {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as File).arrayBuffer === "function" &&
+    typeof (value as File).size === "number" &&
+    typeof (value as File).type === "string"
+  );
+}
+
+async function normalizeUploadImage(file: File, maxBytes: number) {
+  if (file.size <= 0 || file.size > maxBytes) return null;
+  let type = normalizeImageMime(file.type);
+  if (!imageTypes.has(type)) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    type = sniffImageMime(bytes) ?? type;
+    if (!imageTypes.has(type)) return null;
+    const ext = type === "image/webp" ? "webp" : type === "image/png" ? "png" : "jpg";
+    return new File([bytes], file.name || `upload.${ext}`, { type });
+  }
+  return type === file.type ? file : new File([file], file.name, { type });
+}
 
 function readText(value: FormDataEntryValue | null | undefined, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -85,19 +110,27 @@ export const Route = createFileRoute("/api/generate-look")({
             { status: 413 },
           );
         const form = await request.formData().catch(() => null);
-        const person = form?.get("person");
-        const garment = form?.get("garment");
+        const personUpload = form?.get("person");
+        const garmentUpload = form?.get("garment");
         const note = form?.get("note");
-        if (
-          !(person instanceof File) ||
-          !(garment instanceof File) ||
-          !imageTypes.has(person.type) ||
-          !imageTypes.has(garment.type) ||
-          person.size > 8_000_000 ||
-          garment.size > 4_000_000 ||
-          typeof note !== "string" ||
-          note.length > 280
-        ) {
+        const catalogProductId = readUuid(form?.get("catalogProductId"));
+        if (!isUploadFile(personUpload) || typeof note !== "string" || note.length > 280) {
+          return Response.json(
+            { message: "Choose valid JPG, PNG or WebP images and try again." },
+            { status: 400 },
+          );
+        }
+        const person = await normalizeUploadImage(personUpload, 8_000_000);
+        // Prefer the trusted catalogue image so retailer CDNs cannot hand us AVIF via browser Accept.
+        const catalogGarment = catalogProductId
+          ? await catalogGarmentFromProductId(catalogProductId)
+          : null;
+        const garment =
+          catalogGarment ??
+          (isUploadFile(garmentUpload)
+            ? await normalizeUploadImage(garmentUpload, 4_000_000)
+            : null);
+        if (!person || !garment) {
           return Response.json(
             { message: "Choose valid JPG, PNG or WebP images and try again." },
             { status: 400 },
@@ -169,7 +202,6 @@ export const Route = createFileRoute("/api/generate-look")({
           }
         }
 
-        const catalogProductId = readUuid(form?.get("catalogProductId"));
         const productName = readText(form?.get("productName"), 240);
         const retailer = readText(form?.get("retailer"), 100);
         const audience = readText(form?.get("audience"), 20);

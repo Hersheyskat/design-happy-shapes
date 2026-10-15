@@ -13,7 +13,7 @@ import { ensureLookShareSlug, listCatalogProducts, saveMyLook } from "@/lib/comm
 import type { CatalogProductDto } from "@/lib/community.types";
 import { recordShopperEvent } from "@/lib/shopper-events.functions";
 import { analyseGeneratedLook } from "@/lib/stylist-comment.functions";
-import { storeLabelFromUrl } from "@/lib/brands";
+import { sortProductsByBrand, storeLabelFromUrl } from "@/lib/brands";
 type Product = CatalogProductDto;
 type PendingAction = { type: "generate" | "favorite" | "share" | "shareComparison" | "buy"; productId: string };
 
@@ -84,7 +84,7 @@ function ShopLook() {
   }, [loadCatalog]);
   const selectedProduct = products.find((product) => product.id === selectedProductId);
   useEffect(() => { if (selectedProduct) setAudience(selectedProduct.audience); }, [selectedProduct]);
-  const visibleProducts = products.filter((product) => product.audience === audience).sort((left, right) => left.id === selectedProductId ? -1 : right.id === selectedProductId ? 1 : 0);
+  const visibleProducts = sortProductsByBrand(products.filter((product) => product.audience === audience), audience ?? "women").sort((left, right) => left.id === selectedProductId ? -1 : right.id === selectedProductId ? 1 : 0);
   const firstProduct = visibleProducts[0];
   const [view, setView] = useState<"start" | "try" | "compare">("start");
   const [photo, setPhoto] = useState<string | null>(null);

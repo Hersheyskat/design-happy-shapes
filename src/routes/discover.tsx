@@ -6,7 +6,7 @@ import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { ShopLookShell } from "@/components/shoplook-shell";
-import { brandFilterOptions, sortCategoryNames, storeLabelFromUrl } from "@/lib/brands";
+import { brandFilterOptions, sortCategoryNames, sortProductsByBrand, storeLabelFromUrl } from "@/lib/brands";
 import { listCatalogProducts } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 
@@ -41,7 +41,10 @@ function ShopPage() {
   });
   const categories = ["All", ...sortCategoryNames(Array.from(new Set(scopedProducts.map((product) => product.category).filter(Boolean))), audience)];
   const activeCategory = category !== "All" && !categories.includes(category) ? "All" : category;
-  const filtered = scopedProducts.filter((product) => activeCategory === "All" || product.category === activeCategory);
+  const filtered = sortProductsByBrand(
+    scopedProducts.filter((product) => activeCategory === "All" || product.category === activeCategory),
+    audience,
+  );
   const filterCount = (retailer !== "All" ? 1 : 0);
   useEffect(() => {
     if (category !== activeCategory) setCategory(activeCategory);

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import { brandFilterOptions, sortCategoryNames, storeLabelFromUrl } from "@/lib/brands";
+import { brandFilterOptions, sortCategoryNames, sortProductsByBrand, storeLabelFromUrl } from "@/lib/brands";
 import type { CatalogProductDto } from "@/lib/community.types";
 import { StylistChat } from "@/components/stylist-chat";
 
@@ -100,7 +100,10 @@ export function ShopLookResult(props: Props) {
   });
   const categories = ["All", ...sortCategoryNames(Array.from(new Set(scopedProducts.map((item) => item.category).filter(Boolean))), audience)];
   const activeCategory = category !== "All" && !categories.includes(category) ? "All" : category;
-  const matchingProducts = scopedProducts.filter((item) => activeCategory === "All" || item.category === activeCategory);
+  const matchingProducts = sortProductsByBrand(
+    scopedProducts.filter((item) => activeCategory === "All" || item.category === activeCategory),
+    audience,
+  );
   const filterCount = (audience !== props.product.audience ? 1 : 0) + (retailer !== "All" ? 1 : 0);
   useEffect(() => {
     if (category !== activeCategory) setCategory(activeCategory);

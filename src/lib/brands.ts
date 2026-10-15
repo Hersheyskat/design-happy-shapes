@@ -59,9 +59,9 @@ export const WOMEN_BRAND_ORDER = [
 ] as const;
 
 export const MEN_BRAND_ORDER = [
+  "Snitch",
   "Manyavar",
   "Fabindia",
-  "Snitch",
   "Rare Rabbit",
   "Allen Solly",
   "Louis Philippe",
@@ -102,9 +102,12 @@ export function sortBrandNames(names: string[], audience: "women" | "men"): stri
 /** Women category tabs: Dresses and Tops first, then alphabetical. */
 const WOMEN_CATEGORY_ORDER = ["Dresses", "Tops"] as const;
 
+/** Men category tabs: Shirts and T-shirts first, then alphabetical. */
+const MEN_CATEGORY_ORDER = ["Shirts", "T-shirts"] as const;
+
 export function sortCategoryNames(names: string[], audience: "women" | "men"): string[] {
-  if (audience !== "women") return [...names].sort((a, b) => a.localeCompare(b));
-  const rank = new Map(WOMEN_CATEGORY_ORDER.map((name, index) => [name.toLowerCase(), index]));
+  const preferred = audience === "women" ? WOMEN_CATEGORY_ORDER : MEN_CATEGORY_ORDER;
+  const rank = new Map(preferred.map((name, index) => [name.toLowerCase(), index]));
   return [...names].sort((a, b) => {
     const ra = rank.get(a.toLowerCase());
     const rb = rank.get(b.toLowerCase());
@@ -112,6 +115,23 @@ export function sortCategoryNames(names: string[], audience: "women" | "men"): s
     if (ra != null) return -1;
     if (rb != null) return 1;
     return a.localeCompare(b);
+  });
+}
+
+/** Catalogue grids: curated brand order first (Snitch for men), stable within a brand. */
+export function sortProductsByBrand<T extends { retailer: string }>(
+  products: T[],
+  audience: "women" | "men",
+): T[] {
+  const order = audience === "women" ? WOMEN_BRAND_ORDER : MEN_BRAND_ORDER;
+  const rank = new Map(order.map((name, index) => [name.toLowerCase(), index]));
+  return [...products].sort((a, b) => {
+    const ra = rank.get(a.retailer.toLowerCase());
+    const rb = rank.get(b.retailer.toLowerCase());
+    if (ra != null && rb != null) return ra - rb;
+    if (ra != null) return -1;
+    if (rb != null) return 1;
+    return a.retailer.localeCompare(b.retailer);
   });
 }
 

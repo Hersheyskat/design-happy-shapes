@@ -280,10 +280,18 @@ OUTPUT: A single unified, realistic image of the shopper in a thoughtfully style
               );
             }
 
+            let sessionId: string | null = null;
+            if (userId) {
+              const active = await supabaseAdmin.rpc("active_shopper_session_id", {
+                _user_id: userId,
+              });
+              if (!active.error && typeof active.data === "string") sessionId = active.data;
+            }
             const { error: eventError } = await supabaseAdmin.from("shopper_events").insert({
               event_type: "look_created",
               actor_type: userId ? "auth" : "guest",
               user_id: userId,
+              session_id: sessionId,
               catalog_product_id: catalogProductId,
               look_image_path: lookImagePath,
               input_image_path: inputImagePath,

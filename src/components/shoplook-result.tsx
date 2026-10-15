@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import { brandFilterOptions, sortCategoryNames, sortProductsByBrand, storeLabelFromUrl } from "@/lib/brands";
+import { brandFilterOptions, sortCategoryNames, sortProductsByBrand } from "@/lib/brands";
 import type { CatalogProductDto } from "@/lib/community.types";
 import { StylistChat } from "@/components/stylist-chat";
 
@@ -109,7 +109,6 @@ export function ShopLookResult(props: Props) {
     if (category !== activeCategory) setCategory(activeCategory);
   }, [category, activeCategory]);
   const { product, completed, generating, selected, saving } = props;
-  const store = storeLabelFromUrl(product.productUrl);
   const sharing = Boolean(props.sharing);
   const showCompare = saving || props.comparisonCount > 0;
 
@@ -153,7 +152,7 @@ export function ShopLookResult(props: Props) {
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <h1 className="truncate text-sm font-semibold leading-5" title={product.name}>{product.name}</h1>
-          {store ? <p className="truncate text-[11px] leading-4 text-muted-foreground" title={store}>{store}</p> : null}
+          {product.retailer ? <p className="truncate text-[11px] leading-4 text-muted-foreground" title={product.retailer}>{product.retailer}</p> : null}
         </div>
         <p className="shrink-0 text-sm font-semibold leading-5 text-primary">₹{product.price.toLocaleString("en-IN")}</p>
       </div>
@@ -201,7 +200,6 @@ export function ShopLookResult(props: Props) {
         {matchingProducts.map((item) => {
           const isActive = product.id === item.id;
           const isCreating = generating === item.id;
-          const itemStore = storeLabelFromUrl(item.productUrl);
           return (
             <Button
               key={item.id}
@@ -235,7 +233,7 @@ export function ShopLookResult(props: Props) {
                 )}
               </span>
               <span className="w-full truncate pt-2 text-sm font-semibold">{item.name}</span>
-              {itemStore ? <span className="w-full truncate pt-0.5 text-[11px] text-muted-foreground">{itemStore}</span> : null}
+              {item.retailer ? <span className="w-full truncate pt-0.5 text-[11px] text-muted-foreground">{item.retailer}</span> : null}
               <span className="w-full pt-1 text-sm font-semibold">₹{item.price.toLocaleString("en-IN")}</span>
             </Button>
           );

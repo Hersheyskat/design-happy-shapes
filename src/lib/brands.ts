@@ -60,6 +60,7 @@ export const WOMEN_BRAND_ORDER = [
 
 export const MEN_BRAND_ORDER = [
   "Snitch",
+  "Calvin Klein",
   "Manyavar",
   "Fabindia",
   "Rare Rabbit",
@@ -78,7 +79,6 @@ export const MEN_BRAND_ORDER = [
   "Tommy Hilfiger",
   "U.S. Polo Assn.",
   "Jack & Jones",
-  "Calvin Klein",
   "Louis Vuitton",
   "Gucci",
   "Prada",

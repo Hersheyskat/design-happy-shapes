@@ -6,7 +6,7 @@ import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { ShopLookShell } from "@/components/shoplook-shell";
-import { brandFilterOptions, sortCategoryNames, sortProductsByBrand, storeLabelFromUrl } from "@/lib/brands";
+import { brandFilterOptions, sortCategoryNames, sortProductsByBrand } from "@/lib/brands";
 import { listCatalogProducts } from "@/lib/community.functions";
 import type { CatalogProductDto } from "@/lib/community.types";
 
@@ -113,9 +113,7 @@ function ShopPage() {
       {!loading && !error && products.length === 0 && <div className="py-20 text-center"><h2 className="font-display text-2xl">Catalogue is empty</h2><p className="mt-2 text-sm text-muted-foreground">Products will appear here after they are added to Supabase.</p></div>}
       {!loading && !error && filtered.length > 0 && (
         <div className="mt-5 grid grid-cols-2 gap-3">
-          {filtered.map((product) => {
-            const store = storeLabelFromUrl(product.productUrl);
-            return (
+          {filtered.map((product) => (
             <Button key={product.id} asChild variant="ghost" className="h-auto min-w-0 flex-col items-stretch justify-start gap-0 overflow-hidden rounded-md p-0 text-left hover:bg-transparent">
               <Link to="/" search={{ product: product.id }} aria-label={`Try ${product.name} in Look`}>
                 <span className="relative aspect-[4/5] w-full overflow-hidden bg-surface">
@@ -126,12 +124,11 @@ function ShopPage() {
                   </span>
                 </span>
                 <span className="block w-full truncate pt-3 text-sm font-semibold">{product.name}</span>
-                {store ? <span className="block w-full truncate pt-1 text-xs text-muted-foreground">{store}</span> : null}
+                {product.retailer ? <span className="block w-full truncate pt-1 text-xs text-muted-foreground">{product.retailer}</span> : null}
                 <span className="block w-full pt-1 text-sm">₹{product.price.toLocaleString("en-IN")}</span>
               </Link>
             </Button>
-            );
-          })}
+          ))}
         </div>
       )}
       {!loading && !error && products.length > 0 && filtered.length === 0 && <div className="py-20 text-center"><h2 className="font-display text-2xl">No products found</h2><p className="mt-2 text-sm text-muted-foreground">Try another search or clear filters.</p></div>}

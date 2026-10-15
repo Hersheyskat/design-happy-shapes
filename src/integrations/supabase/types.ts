@@ -566,6 +566,7 @@ export type Database = {
           look_image_path: string | null
           metadata: Json
           saved_look_id: string | null
+          session_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -579,6 +580,7 @@ export type Database = {
           look_image_path?: string | null
           metadata?: Json
           saved_look_id?: string | null
+          session_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -592,6 +594,7 @@ export type Database = {
           look_image_path?: string | null
           metadata?: Json
           saved_look_id?: string | null
+          session_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -607,6 +610,13 @@ export type Database = {
             columns: ["saved_look_id"]
             isOneToOne: false
             referencedRelation: "saved_looks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopper_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "user_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -743,6 +753,33 @@ export type Database = {
           },
         ]
       }
+      user_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          ended_reason: string | null
+          id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wardrobe_items: {
         Row: {
           category: string
@@ -818,6 +855,10 @@ export type Database = {
       admin_login_google: { Args: Record<string, never>; Returns: Json }
       admin_logout: { Args: { _token: string }; Returns: undefined }
       admin_session: { Args: { _token: string }; Returns: Json }
+      active_shopper_session_id: {
+        Args: { _user_id: string }
+        Returns: string
+      }
       claim_ai_generation_cooldown: {
         Args: { _client_hash: string }
         Returns: boolean
@@ -826,6 +867,7 @@ export type Database = {
         Args: { _ip_hash: string; _max_count?: number }
         Returns: number
       }
+      end_my_session: { Args: Record<string, never>; Returns: undefined }
       guest_look_remaining: {
         Args: { _ip_hash: string; _max_count?: number }
         Returns: number
@@ -834,6 +876,7 @@ export type Database = {
         Args: { _ip_hash: string }
         Returns: undefined
       }
+      start_my_session: { Args: Record<string, never>; Returns: string }
     }
     Enums: {
       [_ in never]: never

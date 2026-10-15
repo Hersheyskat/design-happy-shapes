@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureMyProfile, saveMyName } from "@/lib/community.functions";
+import { startMySession } from "@/lib/user-sessions.functions";
 
 export function AuthDialog({
   open,
@@ -21,6 +22,7 @@ export function AuthDialog({
 }) {
   const loadProfile = useServerFn(ensureMyProfile);
   const persistName = useServerFn(saveMyName);
+  const beginSession = useServerFn(startMySession);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -49,6 +51,7 @@ export function AuthDialog({
     setBusy(true);
     setMessage(null);
     try {
+      await beginSession().catch(() => null);
       const person = await loadProfile();
       if (person.first_name.trim() && person.surname.trim()) {
         finish();

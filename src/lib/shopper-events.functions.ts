@@ -31,10 +31,15 @@ export const recordShopperEvent = createServerFn({ method: "POST" })
     if (data.eventType === "look_created" && !lookImagePath) {
       throw new Error("A look image is required.");
     }
+    const activeSession = await context.supabase.rpc("active_shopper_session_id", {
+      _user_id: context.userId,
+    });
+    const sessionId = typeof activeSession.data === "string" ? activeSession.data : null;
     const result = await context.supabase.from("shopper_events").insert({
       event_type: data.eventType,
       actor_type: "auth",
       user_id: context.userId,
+      session_id: sessionId,
       catalog_product_id: data.catalogProductId ?? null,
       saved_look_id: data.savedLookId ?? null,
       look_image_path: lookImagePath,

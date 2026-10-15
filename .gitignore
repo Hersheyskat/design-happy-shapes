@@ -16,6 +16,11 @@ dist-ssr
 .nitro
 *.local
 
+# Secrets — never commit real keys (OpenRouter auto-disables leaked keys)
+.env
+.env.*
+!.env.example
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

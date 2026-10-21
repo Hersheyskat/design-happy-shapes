@@ -28,6 +28,7 @@ export function storeLabelFromUrl(url: string | null | undefined) {
 /** Curated brand display order for shopper Brand filters (matches admin allowlist). */
 
 export const WOMEN_BRAND_ORDER = [
+  "FableStreet",
   "Fabindia",
   "Biba",
   "W for Woman",
@@ -52,7 +53,6 @@ export const WOMEN_BRAND_ORDER = [
   "H&M",
   "Forever New",
   "Pretty Pixie",
-  "FableStreet",
   "Levi's",
   "Tommy Hilfiger",
   "Calvin Klein",
@@ -118,16 +118,30 @@ export function sortCategoryNames(names: string[], audience: "women" | "men"): s
   });
 }
 
-/** Catalogue grids: curated brand order first (Snitch for men), stable within a brand. */
-export function sortProductsByBrand<T extends { retailer: string }>(
+/**
+ * Catalogue grids: preferred categories first (Dresses for women, Shirts for men),
+ * then curated brand order within a category.
+ */
+export function sortProductsByBrand<T extends { retailer: string; category?: string | null }>(
   products: T[],
   audience: "women" | "men",
 ): T[] {
-  const order = audience === "women" ? WOMEN_BRAND_ORDER : MEN_BRAND_ORDER;
-  const rank = new Map(order.map((name, index) => [name.toLowerCase(), index]));
+  const categoryPreferred = audience === "women" ? WOMEN_CATEGORY_ORDER : MEN_CATEGORY_ORDER;
+  const categoryRank = new Map(categoryPreferred.map((name, index) => [name.toLowerCase(), index]));
+  const brandOrder = audience === "women" ? WOMEN_BRAND_ORDER : MEN_BRAND_ORDER;
+  const brandRank = new Map(brandOrder.map((name, index) => [name.toLowerCase(), index]));
+
+  const categoryScore = (category: string | null | undefined) => {
+    const rank = categoryRank.get((category ?? "").toLowerCase());
+    return rank != null ? rank : categoryPreferred.length;
+  };
+
   return [...products].sort((a, b) => {
-    const ra = rank.get(a.retailer.toLowerCase());
-    const rb = rank.get(b.retailer.toLowerCase());
+    const categoryDiff = categoryScore(a.category) - categoryScore(b.category);
+    if (categoryDiff !== 0) return categoryDiff;
+
+    const ra = brandRank.get(a.retailer.toLowerCase());
+    const rb = brandRank.get(b.retailer.toLowerCase());
     if (ra != null && rb != null) return ra - rb;
     if (ra != null) return -1;
     if (rb != null) return 1;

@@ -88,6 +88,14 @@ export function ShopLookResult(props: Props) {
     setSearch("");
   }, [props.product.id, props.product.audience]);
 
+  useEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const frame = window.requestAnimationFrame(() => {
+      imageRef.current?.scrollIntoView({ behavior: reduceMotion ? "instant" : "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [props.product.id]);
+
   const normalize = (value: string) => value.toLowerCase().replace(/t[\s-]*shirts?\b/g, "tshirt").replace(/\bshirts\b/g, "shirt").replace(/\bjackets\b/g, "jacket").replace(/\bdresses\b/g, "dress").replace(/\bjeans\b/g, "jean");
   const audienceProducts = props.products.filter((item) => item.audience === audience);
   const draftRetailers = ["All", ...brandFilterOptions(props.products.filter((item) => item.audience === draftAudience).map((item) => item.retailer), draftAudience)];
@@ -207,10 +215,7 @@ export function ShopLookResult(props: Props) {
               disabled={Boolean(generating)}
               aria-label={`Try ${item.name} on me`}
               aria-pressed={isActive}
-              onClick={() => {
-                props.onSelect(item.id);
-                imageRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
-              }}
+              onClick={() => props.onSelect(item.id)}
               className="h-auto min-w-0 w-full flex-col items-stretch justify-start gap-0 whitespace-normal rounded-none p-0 text-left hover:bg-transparent disabled:opacity-70"
             >
               <span className={`relative block aspect-[3/4] w-full shrink-0 overflow-hidden rounded-md bg-surface ${isActive || isCreating ? "ring-1 ring-primary" : ""}`}>

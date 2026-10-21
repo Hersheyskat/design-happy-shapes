@@ -404,8 +404,8 @@ function ShopLook() {
     if (!product || generating) return;
     setAudience(product.audience);
     setGenerationError("");
-    if (generated[id]) setActiveId(id);
-    else void generateLook(product);
+    setActiveId(id);
+    if (!generated[id]) void generateLook(product);
   }
 
   async function generateLook(product: Product) {
